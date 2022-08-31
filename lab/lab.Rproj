@@ -1,59 +1,13 @@
----
-title: "Multivariable Regression Lab 1"
-author: "Matthew Reyes"
-date: "`r Sys.Date()`"
-output: html_document
----
+Version: 1.0
 
-# Multivariate Regression Lab 1
+RestoreWorkspace: Default
+SaveWorkspace: Default
+AlwaysSaveHistory: Default
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
+EnableCodeIndexing: Yes
+UseSpacesForTab: Yes
+NumSpacesForTab: 2
+Encoding: UTF-8
 
-# Lab 1 Notes
-
-## Exporting & Importing Data
-
-Absolute vs relative/local paths
-
-- using the relative path is typically better (Example: "data.csv")
-- when the project is setup, make sure the data you want to work with lives in the working directory to avoid having to use the entirety of the file path
-- also possible to use the absolute path (Example: "C://users/data/set1/data.csv")
-
-To check the working directory, can use `getwd()` function.
-
-## Resources & Packages
-
-The following are packages used in this document for analysis. 
-
-```{r packages}
-packages <- c(
-  "tidyr",
-  "readr",
-  "dplyr",
-  "knitr",
-  "ggplot2"
-)
-
-install.packages(packages)
-```
-
-```{r libraries}
-libraries <- c(
-  "tidyr",
-  "readr",
-  "dplyr",
-  "knitr",
-  "ggplot2"
-)
-
-lapply(libraries, require, character.only = TRUE)
-```
-
-```{r example}
-
-
-
-```
-
+RnwWeave: Sweave
+LaTeX: pdfLaTeX

@@ -1,0 +1,115 @@
+---
+title: "Multivariable Regression Lab 1"
+author: "Matthew Reyes"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Multivariate Regression Lab 1
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Lab 1 Notes
+
+## Exporting & Importing Data
+
+Absolute vs relative/local paths
+
+- using the relative path is typically better (Example: "data.csv")
+- when the project is setup, make sure the data you want to work with lives in the working directory to avoid having to use the entirety of the file path
+- also possible to use the absolute path (Example: "C://users/data/set1/data.csv")
+
+To check the working directory, can use `getwd()` function.
+
+## Resources & Packages
+
+The following are packages used in this document for analysis. These are typically open-source, widely available groups of functions, tools, and documentation that can aid your analysis or improve quality of life.
+
+The `install.packages("package_name")` installs packages on the local machine for use, but it is not yet included in the project. To use the library in your script, you need to import the package using `library(package_name)`. 
+
+- notably, `install.packages()` requires a string (`"example"`) as an argument, whereas `library()` does not need the package to be in a string (`example`)
+
+## Help Tool
+
+Getting help in R, you can precede a search topic using `?` in the console to 
+
+
+
+```{r packages}
+packages <- c(
+  "tidyr",
+  "readr",
+  "dplyr",
+  "knitr",
+  "ggplot2",
+  "glmnet"
+)
+
+install.packages(packages)
+```
+
+```{r libraries}
+libraries <- c(
+  "tidyr",
+  "readr",
+  "dplyr",
+  "knitr",
+  "ggplot2",
+  "glmnet"
+)
+
+lapply(libraries, require, character.only = TRUE)
+```
+
+```{r exercises}
+
+# checking working directory
+getwd()
+
+# adding dataset to the working directory, data lives in the "dataset" directory
+
+# Provided code
+# data processing
+
+data <-read.table(file="data/Data_Bodyfat.txt", header=FALSE, quote="")
+bf1 <- data[,2]
+bf2 <- data[,3]
+age <- data[,5]
+weight <- data[,6]
+height <- data[,7]
+X <- as.matrix(data[,10:19])
+
+colnames(X) <- c("neck", "chest", "abdomen", "hip", "thigh", "knee",
+"ankle", "biceps", "forearm", "wrist")
+
+data <- cbind(bf1, bf2, age, weight, height, X)
+
+colnames(data)<- c(c("bf1", "bf2", "age", "weight", "height"), colnames(X))
+
+# data visualization
+
+plot(bf1, bf2)
+pairs(~bf1+age+weight+height)
+
+# remove outliers
+
+ids = c(seq(1,nrow(data))[data[,4]>300], seq(1,nrow(data))[data[,5]<40])
+data2 = data[-ids,]
+
+# model fitting
+
+Xall = data2[, 3: 15]
+y = data2[, 1]
+
+library(glmnet)
+fit=glmnet(Xall,y)
+plot1 <- plot(fit, xvar="lambda", label=TRUE)
+
+# exporting plots as images using R
+pdf("plot1.pdf", 6, 6) 
+plot(fit,xvar="lambda", label=TRUE)
+dev.off
+
+```

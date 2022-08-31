@@ -60,6 +60,3 @@ Lab 11: Review principal components analysis and factor analysis + Example 6
 - **Homework 4: logistic regression model, due Oct 24**
 
 Lab 12: Review classification and clustering + Example 7
-
-## Summary
-
