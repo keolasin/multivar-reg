@@ -1,0 +1,76 @@
+---
+title: "Multivariable Regression Lab 2"
+author: "Matthew Reyes"
+date: '`r Sys.Date()`'
+output: html_document
+---
+
+# Multivariable Regression Lab 2
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Lab 2 Notes
+
+### Objects in R
+
+```{r ojbects}
+
+my_obj1 <- 48
+my_obj2 <- "R is tight"
+my_obj2 <- r is cool # this line won't work because of the syntax in assignment being wrong
+
+# we can recall the object later and access the value of the object
+
+my_obj3 <- my_obj1 + 2 # expect my_obj3 to be 50
+(my_obj3)
+
+```
+
+### Operators and Functions
+
+`+` addition
+`-` subtraction
+`/` division
+`^` or `**` exponentiation
+`(x mod y)` modulus, x%%y
+`x %/% y` integer division
+
+*Comparison operators*
+
+`<` less than
+`<=` less than or equal to
+`>` greater than
+`>=` greater than or equal to
+`==` equal to
+`!=` not equal to
+
+`!` NOT
+`|` OR
+`&` AND
+
+#### Common math functions
+
+`round(pi, digits = 3)` rounds pi to 3 decimal places
+`ceiling(pi)` returns the smallest integer no less than the argument
+`ceiling(-pi)` returns the smallest integer no less than the argument (expect -3)
+`floor(pi)` returns the largest integer no greater than the argument
+`trunc(pi)` takes a single numeric argument x and returns a numeric vector containing the integers formed by truncating the values in x toward 0. `trunc(pi)` returns `3`
+
+### Vectors in R
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

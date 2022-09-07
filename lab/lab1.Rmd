@@ -11,9 +11,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Lab 1 Notes
+## Lab 1 Notes
 
-## Exporting & Importing Data
+### Exporting & Importing Data
 
 Absolute vs relative/local paths
 
@@ -23,7 +23,7 @@ Absolute vs relative/local paths
 
 To check the working directory, can use `getwd()` function.
 
-## Resources & Packages
+### Resources & Packages
 
 The following are packages used in this document for analysis. These are typically open-source, widely available groups of functions, tools, and documentation that can aid your analysis or improve quality of life.
 
@@ -31,7 +31,7 @@ The `install.packages("package_name")` installs packages on the local machine fo
 
 - notably, `install.packages()` requires a string (`"example"`) as an argument, whereas `library()` does not need the package to be in a string (`example`)
 
-## Help Tool
+### Help Tool
 
 Getting help in R, you can precede a search topic using `?` in the console to 
 
@@ -108,8 +108,8 @@ fit=glmnet(Xall,y)
 plot1 <- plot(fit, xvar="lambda", label=TRUE)
 
 # exporting plots as images using R
-pdf("plot1.pdf", 6, 6) 
-plot(fit,xvar="lambda", label=TRUE)
-dev.off
+pdf("plot1.pdf", 6, 6) # arguments to pdf("filename.pdf", width, height)
+plot(fit,xvar="lambda", label=TRUE) # perform your plot
+dev.off #close the connection and save the resulting file
 
 ```
