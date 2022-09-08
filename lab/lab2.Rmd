@@ -58,19 +58,137 @@ my_obj3 <- my_obj1 + 2 # expect my_obj3 to be 50
 `floor(pi)` returns the largest integer no greater than the argument
 `trunc(pi)` takes a single numeric argument x and returns a numeric vector containing the integers formed by truncating the values in x toward 0. `trunc(pi)` returns `3`
 
-### Vectors in R
+### Data Types and Vectors in R
 
+*Data Types*
 
+`class(100)` returns the class of the argument, this would return `numeric`
+`is.character("100")` evalutes if the data type of the object is a character, would return true
+`as.numeric("100")` would convert the character argument and return a numeric data type object, `100`
+`as.character(100)` would convert the numeric argument and return a character data type object, `"100"`
 
+*Vectors*
 
+`c(1, 2)`, short for concatenate, constructs a vector of objects of the same data type. This would be a numeric vector
+`c(1, 2, "abc")` would force the numeric arguments `1` and `2` to the character data type
 
+Concatenate two vectors, if the vectors are different types, would convert to be the same data type
 
+```{r concatenate_vectors}
+vec1 <- c(1, 2)
+vec2 <- c(4, 3)
+combined <- c(vec1, vec2)
+```
 
+### Sequences
 
+`1:5` would create a vector from 1 to 5
+`5:1` would create a vector from 5 to 1
+`seq(from = 1, to = 5, by = 1)` would create a vector from 1 to 5, stepping by 1
+`rep(1, times = 5)` creates a vector repeting the first argument *n* times
 
+```{r sequences}
 
+rep(c(1,2,3), times = 3) # would create a new vector c(1,2,3, 1,2,3, 1,2,3)
+rep(c(1,2,3), each = 2) # would create a new vector, repeating each element of the first argument n times. Returns c(1,1,2,2,3,3)
 
+```
 
+We can apply common operators and arithmetic to vectors
 
+`c(1,2,4) * 5` returns a vector with values `c(5, 10, 20)`
+`c(1,2,4) + c(2,4,3)` returns vector `c(3,6,7)`
+`c(1,2,4) > 2` would check each item in the vector to see if it's greater than 2, then return `TRUE` or `FALSE` in a new vector for the evaluated condition
 
+### Common stats functions
+
+Given some vector x
+
+`x <- 1:10`
+
+`sum(x)` sum
+`mean(x)` mean
+`var(x)` variance
+`cov(x,y)` covariance
+`cor(x,y)` correlation
+`sd(x)` standard dev
+`length(x)` length of an item
+`min(x)` min
+`max(x)` max
+`range(x)` range
+`median(x)` sample median
+`quantile(x, 0.1)` sample quantile
+
+`na.rm = TRUE` can be used to remove NA
+`summary(x)` would give a summary stats table for the vector/data frame x
+
+`scale()` function can be used to center a vector (so that mean = 0) or standardize a vector (so that mean = 0, var = 1)
+
+```{r scale}
+
+x<- 1:10
+y <- scale(x, center = TRUE, scale = FALSE) # center x and store output in y, y now has additional structure called "attribute"
+attr(y, "scaled:center") <- NULL # removes the attribute of y
+
+y <- c(y) # converts y to a numeric vector
+z <- scale(x, center = TRUE, scale = TRUE)
+
+```
+
+### Indexing vectors
+
+`c(10:1)[5]` would return the 5th element in the vector 10:1, would would be 6
+`c(10:1)[c(6,3,7)]` would return the 6th, 3rd, and 7th elements in the vector 10:1 as a numeric vector containing those values
+`c(10:1)[c(T,T,T,F,F,F,F,T,T,T)]` returns the elements in 10:1 for which the second vector has a TRUE value in that position
+`c(10:1)[c(10:1) > 8]`, first evaluates condition `c(10:1) > 8`, providing a logical vector (TRUE, FALSE values in positions), then compares and returns a new vector in the first 10:1 vector.
+
+`which(c(T,T,T,F,F,T))` returns the positional index of the trues in a numeric vector
+
+`which.max()` and `which.min()` may be helpful
+
+`sort()` sorts the values from the lowest to highest value (or sort the values form the highest to lowest if including argument `decreasing = TRUE`)
+`order()` returns a permutation which rearranges the vector into ascending order (or descending)
+
+### Matrices and Arrays
+
+A matrix is a collection of elements stored in two dimensions (the rows and the columns). It contains elements with the same data type.
+
+```{r matrices}
+
+my_mat1 <- matrix(1:16, nrow = 4, ncol = 4, byrow=TRUE) # would fill in the matrix left to right
+my_mat2 <- matrix(1:16, nrow = 4, ncol = 4, byrow=FALSE) # would fill in the matrix top to bottom
+
+my_mat3 <- diag(c(1,2,3,4)) # using diag, constructs a diagonal vector, filling in 0 for the missing values
+
+my_mat4 <- diag(2) # constructs a 2x2 identity matrix
+
+```
+
+```{r matrix_math}
+
+x <- matrix(c(2,1,3,4), nrow = 2, ncol = 2, byrow = TRUE)
+y <- t(x) # transposes the matrix x
+
+X %*% y # matrix multiplication of x and y
+z <- solve(x) # inverse of vector x, or x^-1
+
+x %*% solve(x) # matrix multiplication of x and x^-1
+
+```
+
+Matrix element extraction
+
+```{r extraction}
+
+my_mat1 <- matrix(1:16, nrow=4, ncol=4, byrow=TRUE)
+
+my_mat1[2,3] # returns the (2,3)th element (the 2nd row, 3rd col)
+my_mat1[2:4, 3] # returns a vector containing the (2,3)th, (3,3)th, and (4,3)th elements of the matrix
+my_mat1[2:4, 2:3] # returns a submatrix
+
+```
+
+### Data Frames
+
+Arrays are a collection of elements stored in multiple dimensions. It contains elements with the same data type.
 
