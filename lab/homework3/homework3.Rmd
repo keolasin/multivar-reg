@@ -1,0 +1,171 @@
+---
+title: 'Homework 3: Logistic Regression'
+author: "Matthew Reyes"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Homework 3 Assignment
+
+```{r setup, include = FALSE}
+
+# install necessary packages
+# install.packages("fastDummies")
+ 
+# include libraries/packages for analysis
+libraries <- c(
+  "tidyr",
+  "readr",
+  "dplyr",
+  "knitr",
+  "ggplot2",
+  "glmnet",
+  "readxl",
+  "MASS",
+  "fastDummies"
+)
+
+lapply(libraries, require, character.only = TRUE)
+
+```
+
+## Problem 1
+
+### A)
+
+```{r problem1-cleaning}
+
+# data cleaning
+heart_data <- read.table(file="Data-HW3-CHeartDisease.dat", header=FALSE, quote="", sep=",")
+n.all <- nrow(heart_data)
+id.ms <- sort(c(seq(1,n.all)[heart_data[,12]=='?'], seq(1,n.all)[heart_data[,13]=='?']))
+data2 <- heart_data[-id.ms,]
+data2[,12] <- as.numeric(data2[,12])
+data2[,13] <- as.numeric(data2[,13])
+X <- data.matrix(data2[,1:13])
+Y <- data2[,14]; 
+Y[Y > 0] <- 1
+colnames(X) <- c("age", "gender", "chestpain", "bldpressure", "chol", "bldsugar", "electrocardio", "heartrate", "angina", "STdepression","STslope", "vessel", "thal")
+colnames(data2) <- c("age", "gender", "chestpain", "bldpressure", "chol", "bldsugar", "electrocardio", "heartrate", "angina", "STdepression","STslope", "vessel", "thal", "disease")
+
+data.example1 <- data2 %>%
+  mutate(has_dz = disease > 0 )
+```
+
+After cleaning the data, the below logistic regression model summary, with `Y` as the response variable (presence or absence of heart disease), and all other variables listed, were evaluated.
+
+```{r 1-a}
+# fit the logistic regression model
+heart.glm <- glm(Y ~ ., data = data2[-14], family = "binomial")
+summary(heart.glm)
+```
+
+### B)
+
+Based on the new fitted logistic regression including the levels of the categorical variables, `chestpain` and `thal`, with an alpha of `0.05`, the following predictor variables appear to be statistically significant according to the significance associated with the z-values for those predicors: gender, bloodpressure, heart rate, vessel, chest pain scores of 1 and 3, and thal level of 3.
+
+```{r 1-b}
+# Creating dummy variables for chest pain type, thal predictor variables
+data2.clean <- dummy_cols(data2, select_columns = c("chestpain","thal"), remove_selected_columns = TRUE)
+
+# Fitting a new logistic regression model with the additional predictor variables
+heart2.glm <- glm(Y ~ ., data = data2.clean[-12], family = "binomial")
+summary(heart2.glm)
+
+# interaction of terms gender*bldsugar
+library(tidyverse)
+data.example <- cbind(data2.clean[2], data2.clean[5])
+data.plotting <- cbind(data2.clean[2], data2.clean[5], data2["disease"])
+data.plotting$disease[data.plotting$disease > 0] <- 1
+data.plotting2 <- data.plotting %>%
+  mutate(men_dz = ifelse(disease == 1 & gender == 1, 1, 0)) %>%
+  mutate(fem_dz = ifelse(disease == 1 & gender == 0, 1, 0))
+
+men_disease <- count(data.plotting2$men_dz)
+
+CVD <- Y
+heart.example <- glm(CVD ~ gender*bldsugar, data = data.example, family = "binomial")
+summary(heart.example)
+plot(heart.example$residuals)
+
+# DiD slides: https://www.princeton.edu/~otorres/DID101R.pdf
+
+## DiD plot
+data.plotting %>% 
+  group_by(gender,bldsugar) %>%
+  summarize(y=mean(disease)) -> sumdata
+
+ggplot(data=data.plotting, aes(x=bldsugar, y=y, group=gender, color=gender)) +
+  geom_line() +
+  geom_vline(xintercept = "Blood sugar: Low | High", linetype="dotted", color = "black", size = 1) + # time 
+  geom_point()
+
+did_plotdata %>%
+  mutate(label = if_else(observation == "November 1992", as.character(state), NA_character_)) %>%
+  ggplot(aes(x=observation,y=emptot, group=state)) +
+  geom_line(aes(color=state), size=1.2) +
+  geom_vline(xintercept = "Intervention", linetype="dotted", 
+             color = "black", size=1.1) + 
+  scale_color_brewer(palette = "Accent") +
+  scale_y_continuous(limits = c(17,24)) +
+  ggrepel::geom_label_repel(aes(label = label),
+                   nudge_x = 0.5, nudge_y = -0.5,
+                   na.rm = TRUE) +
+  guides(color=FALSE) +
+  labs(x="", y="FTE Employment (mean)") +
+  annotate(
+    "text",
+    x = "November 1992",
+    y = 19.6,
+    label = "{Difference-in-Differences}",
+    angle = 90,
+    size = 3
+  )
+  
+```
+### C)
+
+The calculated coefficient associated with the blood pressure predictor variable in our logistic model of `0.023981` means the odds of heart disease (the response variable) with every one unit increase in blood pressure are e^0.023981 = 1.024271 times higher, keeping all other predictors fixed.
+
+If one were to test the null hypothesis whether the coefficient for bloodpressure equals 0, the p-value of the test from the summary above would be `0.030889`. With a significance level set to alpha = `0.05`, one could conclude that we can reject the null hypothesis that the bloodpressure coefficient is equal to 0 since `0.030889 < 0.05`.
+
+
+### D)
+
+```{r 1d}
+
+coef(heart2.glm)
+exp(coef(heart2.glm))
+confint(heart2.glm, level = 0.95)
+pred <- as.numeric(predict(heart2.glm, type = "response") > 0.5)
+table(Y, pred)
+sum(Y != pred) / length(Y)
+```
+Based on the above calculation, we can expect the misclassification rate to be `0.1380471`, meaning approximately 13% of the model predictions are misclassified, where the actual, observed response data does not match the predicted response.
+
+## Problem 2
+
+### A)
+
+From the logistic regression fit below, the only statistically significant predictor variable appears to be Lag2, or the percentage return for the two previous weeks for the response variable of direction.
+```{r problem2-cleaning}
+
+load(file="Data-HW3-Weekly.Rdata")
+stocks <- Weekly_data[-1]
+stocks <- stocks[-7]
+stocks.glm <- glm(stocks$Direction ~ ., data = stocks, family="binomial")
+summary(stocks.glm)
+```
+### B)
+
+```{r 2-b}
+coef(stocks.glm)
+exp(coef(stocks.glm))
+confint(stocks.glm, level = 0.95)
+prediction <- as.numeric(predict(stocks.glm, type="response") > 0.5)
+table(stocks$Direction, prediction)
+```
+
+From the above confusion matrix, we learn the number of true positive and negatives, along with type 1 and 2 error, created in our logistic regression model when comparing the true observed direction of the stocks with the predicted response variable when p hat is greater than 0.5 or less than 0.5. Essentially, this is a percentage of the mistakes made in the model given the open form solution of the model. So in the above table, there would be 54 true positives, 430 false negatives, 48 false positives, and 557 true negatives from our model when matched against the observed data.

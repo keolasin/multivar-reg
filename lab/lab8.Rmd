@@ -1,0 +1,103 @@
+---
+title: "Multivariate Regression Lab 8"
+author: "Matthew Reyes"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Multivariable Regression Lab 8
+
+See OneNote document for lab notes.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries}
+
+# include packages
+install.packages(glmnet)
+
+libraries <- c(
+  "tidyr",
+  "readr",
+  "dplyr",
+  "knitr",
+  "ggplot2",
+  "glmnet",
+  "readxl",
+  "MASS",
+  "glmnet"
+)
+lapply(libraries, require, character.only = TRUE)
+
+```
+
+## Notes
+
+Lab lecture notes
+
+```{r example}
+
+library(glmnet)
+fit <- glmnet(x, y, family = "gaussian", alpha = 1) # where y is a vector, x is a matrix
+fit$lambda
+fit$beta # a matrix
+
+# predict the fitted values with the model fit. The newx should be a matrix, and s should be some valeus in fit$lambda
+predict(fit, newx, s) # newx is a matrix, s is the lambda value
+
+# fit a LASSO regression with the specified lambda
+fit <- glmnet(x, y, family = "gaussian", alpha = 1, lambda)
+
+# fit a LASSO regression with lambda specified by the cross-validation
+cv.fit <- cv.glmnet(x, y, family = "gaussian", alpha = 1, nfolds)
+cv.fit$lambda.min
+
+# predict the fitted values with the model cv.fit; the newx should be a matrix
+predict(cv.fit, newx, s = "lambda.min")
+
+# a trace plot of the coefficients with the increase of lambda (page 29, lecture 4)
+plot(fit, xvar = "lambda", label = T)
+
+# Add a reference line at the selected lambda
+abline(v = log(cv$lambda.min))
+
+# the final coefficients at the selected lambda
+coef(fit, s = cv$lambda.min)
+
+```
+
+## Exercise
+
+```{r exercise}
+# load data
+load("data/prostate.Rda")
+
+# split the data set into training and test set
+train <- subset(prostate, train == TRUE)
+train <- train[,-10]
+test <- subset(prostate, train == FALSE)
+test <- test[,-10]
+
+# Fit a LASSO regression of lpsa variable on all other clinical measures, with lambda selected by 10-fold cross validation.
+
+model <- glmnet(x = as.matrix(train[,-9]), y = train$lpsa, family = "gaussian", alpha = 1)
+crossVal <- glmnet(x = as.matrix(train[,-9]), y = train$lpsa, family = "gaussian", alpha = 1, nfolds = 10)
+crossVal$lambda.min <- min(crossVal$lambda)
+plot(model, xvar = "lambda", label = T) +
+abline(v = log(crossVal$lambda.min))
+
+coef(model, s = crossVal$lambda.min)
+
+# Predict the response vector in the test set based on the fitted LASSO regression.
+myPrediction <- predict(model, newx = as.matrix(test[,1:8]), s = crossVal$lambda.min) # vector of predicted lpsa's from the model (made using the training data)
+
+# Evaluate the prediction by the MSE
+## subtract our predicted response vector of lpsa's from the known (test's) lpsa's vector, then average
+mean(myPrediction-test[,9]^2)
+
+# Fit an OLS linear regression of lpsa on all other clinical measures.
+
+
+```

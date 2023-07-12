@@ -1,0 +1,162 @@
+---
+title: "Multivariate Regression Lab 7"
+author: "Matthew Reyes"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Multivariable Regression Lab 7
+
+See OneNote document for lab notes.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries}
+
+# include packages
+install.packages(glmnet)
+
+libraries <- c(
+  "tidyr",
+  "readr",
+  "dplyr",
+  "knitr",
+  "ggplot2",
+  "glmnet",
+  "readxl",
+  "MASS",
+  "glmnet"
+)
+lapply(libraries, require, character.only = TRUE)
+
+```
+
+## Exercise
+
+```{r crop-data}
+
+# read in data
+crop <- read.csv("data/crop.csv")
+
+# explore data
+head(crop)
+
+# rainfall, wind, temperature are continuous predictors
+# crop.history is a categorical predictor variable
+# score is the outcome variable (categorical)
+
+# set snap beans (Crop.history == "3") as reference group
+# encode the categorical variable using as.factor
+crop$Crop.History <- factor(crop$Crop.History, levels = c("3", "2","1"))
+
+# encode the categorical variable using dummy variables
+# group1 <- as.numeric(crop$Crop.History == "1")
+# group2 <- as.numeric(crop$Crop.History == "2")
+# crop <- cbind(crop, group1, group2)
+head(crop)
+
+# fit a linear regression
+fit <- lm(crop$Score~crop$Rainfall+crop$Wind+crop$Temperature+Crop.History, data = crop)
+
+# Estimation of Beta, testing Bp = 0, R2:
+summary(fit)
+
+# find the predicted response vector
+fit$fitted.values
+
+# find the residual vector:
+fit$residuals
+
+# plotting our model
+pairs(~Score+Rainfall+Wind+Temperature+Crop.History, data = crop)
+
+# more plots
+## residuals
+plot(fitted(fit), resid(fit))
+
+## fitted values
+plot(fitted(fit), crop$Score) +
+  abline(a=0, b=1, lty=2)
+
+## cook's distance
+plot(cooks.distance(fit))
+
+## leverage scores/hat values plot
+plot(hatvalues(fit))
+
+# check model fit/variable selection
+x <- as.matrix(crop)
+ <- x[,colnames(x) != "Score"]
+fit.matrix <- as.matrix(crop)
+fit.matrix <- fit.matrix[,-1]
+fit3 <- glmnet(fit.matrix, crop$Score)
+fit3
+plot(fit3, xvar="lambda", label=TRUE)
+```
+### Question 1
+
+Choose the snap beans as the reference group of the crop history variable, and use two ways (factor vector and dummy variables) to encode the categorical variable and fit the linear regression.
+
+```{r crop-q1}
+
+# set snap beans (Crop.history == "3") as reference group
+# encode the categorical variable using as.factor
+crop$Crop.History <- factor(crop$Crop.History, levels = c(3, 1, 2))
+
+# encode the categorical variable using dummy variables, with snap beans (3) as the reference group
+crop$Crop.History.soybeans <- as.numeric(crop$Crop.History == 1)
+crop$Crop.History.oats <- as.numeric(crop$Crop.History == 2)
+crop <- cbind(crop, crop$Crop.History.soybeans, crop$Crop.History.oats)
+head(crop)
+
+```
+
+### Question 2
+
+Interpret the coefficient associated with the rainfall, and test the null hypothesis that
+this coefficient equals zero.
+
+```{r crop-q2}
+
+# fit a linear regression for Rainfall (predictor) with Score (response)
+fit.lm <- lm(Score ~ Rainfall + Wind + Temperature + Crop.History.oats + Crop.History.soybeans, data = crop)
+summary(fit.lm)$coefficients
+```
+From the summary of the fitted linear model above, we can tell that the Estimated Beta term, or intercept for the rainfall variable Xr, is calculated to be `1.116964`, however with a p-value of `0.003152`, we reject the null hypothesis that the coefficient Beta_rainfall = 0.
+
+### Question 3
+
+Interpret the two coefficients associated with the crop history.
+
+```{r crop-q3}
+fit.lm
+summary(fit.lm)$coefficients[5:6,]
+summary(fit.lm)$coefficients
+
+```
+
+For the history of the crop plots being planted with either oats or soybeans, with reference to plots planted with snap beans, we fail to reject the null hypothesis that the history of the crop plots beta coefficients are equal to 0, given the above p-values of `0.1480351` and `0.5005606` for oats and soybeans, respectively.
+
+### Question 4
+
+Fit a linear regression without the predictors rainfall and wind, and test the null
+hypothesis that both of the two coefficients equal zero.
+
+```{r crop-q4}
+
+
+
+```
+
+### Question 5
+
+Draw the four diagnosis plots and state your findings.
+
+```{r crop-q5}
+
+
+
+```
+

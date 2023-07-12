@@ -1,0 +1,280 @@
+---
+title: 'PHW 245: Multivariate Statistics Project Proposal'
+author: "Matthew Reyes"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+# Multivariate Statistics: Final Project
+
+## Executive Summary
+
+- Model-based Clustering indicates patients with sarcoid may have differing disease prognostics when stratified by sex.
+- Multivariate 2 sample comparison indicates lung function variables differ significantly based on race for patients with sarcoidosis, potentially indicating a health disparity and underlying health equity issue.
+- Principal components analysis indicates age, BMI, FEV1/FVC ratio, and DLCO measure as contributing variables to average lung function performance for the first principal component.
+- The first latent factor in factor analysis, accounting for 49% of the variation in the data, indicates age, BMI, FEV1/FVC ratio as contributing to average lung function performance.
+
+```{r setup, include = FALSE, warning=FALSE, echo=FALSE, tidy=TRUE}
+
+# install necessary packages
+ 
+# include libraries/packages for analysis
+libraries <- c(
+  "tidyr",
+  "readr",
+  "dplyr",
+  "knitr",
+  "ggplot2",
+  "glmnet",
+  "readxl",
+  "MASS",
+  "mda",
+  "class",
+  "tree",
+  "fastDummies",
+  "elasticnet",
+  "mclust"
+)
+
+lapply(libraries, require, character.only = TRUE)
+```
+
+## Background
+
+Sarcoidosis, a rare disease affecting multiple organ systems of unknown etiology, does not yet have fully standardized measures for a final diagnosis, typically being a diagnosis by exclusion. Recent research indicates the pathophysiology of sarcoidosis in pulmonary organs can vary drastically based on differing, underlying epidemiological factors such as race and other social determinants of health. Pulmonary function tests are often one of the earliest screening tools used by physicians to evaluate lung function, track disease progress and treatment response. Certain patterns in the lung function measures/variables can be indicative of differing lung physiology that affects treatment plans, and early detection along with appropriate treatment can improve health outcomes. To better identify associations between sarcoidosis and various measures of lung function and other patient attributes, 4 years of pulmonary function testing data for a Bay Area hospital catchment population can be evaluated through multivariate statistics.
+
+## Data Characteristics
+
+The data to be analyzed contains de-identified pulmonary function test measures and related demographics for individual visits for a pulmonary function lab at UCSF over a four-year period (2014-2018). The larger dataset dimensions are 19820 unique visits (records) for 20 unique variables (23 total, some being descriptive of another existing variable), of which there are a mixture of categorical variables (race, sex, diagnosis, severity rankings) and continuous variables (age, BMI, height, FVC, FEV1, ratio, Total Lung Capacity by N2 [TLC_N2], Total Lung Capacity by Box [TLC_Box], Diffusion Lung Capacity for Carbon Monoxide [DLCO], and percent of predicted for each). 
+
+Omitting duplicate records and records where certain tests were not performed (resulting in NAs), 2100 records remained for analysis. The diagnosis or ICD.10 variable can be used to subset the larger population based on the disease diagnosis at the time of their visit; 111 records were identified that had sarcoidosis. Summary and univariate statistics can be explored on the selected 111 records, prior to evaluation through multivariate methods, to better ensure a more robust interpretation of the analysis and meet analysis assumptions.
+
+## Methods
+
+Clustering can first be performed on the larger dataset including all diagnoses to help identify other diseases that sarcoidosis might share similarity.
+
+Given the size of the dataset, identifying principal components and latent factors, followed by logistic regression analysis of those principal components/latent factors on a specific outcome (i.e. lung function measure above/below a standard clinical threshold used for interpretation/diagnosis), can help identify underlying factors and significant contributing variables for populations with the disease.
+
+The first research question that would be explored is whether there is a significant difference in lung function measures based on certain demographic variables, particularly age, race, or gender. So, identifying risk factors and population differences through multivariate methods can better inform medical decision making and population health. Certain variables can be classified into a binary or varying severity levels, making a multivariate logistic regression appropriate along multivariate analysis of variance between two populations. 
+
+Quadratic discriminant analysis can be performed (given the normal distribution of the continuous variables with unequal variances and differing means), to identify differential features (lung function variables) whose values are such that the known groups of populations (race or sex) are separated as much as possible.
+
+## Results
+
+```{r data-cleaning, warning=FALSE, echo=FALSE}
+# import data
+pulm <- read_csv("pulmonary_function_data.csv", show_col_types = FALSE)
+colnames(pulm) <- c(
+  "ID",
+  "Race",
+  "Clinic",
+  "ICD10",
+  "Diagnosis",
+  "Age",
+  "Sex",
+  "Height",
+  "BMI",
+  "FVC",
+  "FVC_pred",
+  "FEV1",
+  "Ratio",
+  "TLC_N2",
+  "TLC_Box",
+  "DLCO",
+  "DLCO_Hb",
+  "FVC_%pred",
+  "FEV1_%pred",
+  "Ratio_%pred",
+  "TLC_box_%pred",
+  "DLCO_Hb_%pred",
+  "DLCO_%pred"
+)
+# remove suspected duplicates
+## the supplied data has duplicate rows that only differ on the diagnosis/IDC10 variables, for patients that had multiple conditions selected for their visit, so we identify the same patient based on demographic variables that are the same, a spirometry measure that is the same, and remove the duplicates
+pulm <- distinct(pulm, Race, Clinic, Age, Sex, Height, BMI, FVC, .keep_all=TRUE)
+
+# removing records with any NA
+## All measures may not have been performed for each visit, so we'll only keep records that have all the measures of interest. Further analysis could subdivide based on available tests, or impute data when reasonable.
+pulm <- na.omit(pulm)
+
+# selecting based on diagnosis
+sarcoid <- subset(pulm, pulm$Diagnosis == "Sarcoid")
+
+# coerce factor variables
+facts <- c("Race", "Sex")
+pulm[facts] <- lapply(pulm[facts], factor)
+
+# remove misc/redundant variables
+extras <- c("ID","Clinic","ICD10","DLCO_Hb","FVC_pred","FVC_%pred","FEV1_%pred","Ratio_%pred","TLC_Box_%pred","DLCO_Hb_%pred")
+pulm <- pulm[,!names(pulm) %in% extras]
+
+# order the columns
+order <- c("Diagnosis","Race","Sex","Height",
+  "Age",
+  "BMI",
+  "FVC",
+  "FEV1",
+  "Ratio",
+  "TLC_N2",
+  "TLC_Box",
+  "DLCO",
+  "DLCO_%pred"
+  )
+pulm <- pulm[, order]
+sarcoid <- sarcoid[, order]
+
+# convert to matrix
+pulm.mat <- as.matrix(pulm)
+sarcoid.mat <- as.matrix(sarcoid)
+```
+### Summary Statistics
+
+```{r summary-stats, tidy=TRUE}
+# rough visual check for normality of numeric variables
+# lapply(pulm[,4:13], hist)
+#lapply(pulm[,4:13], var)
+(summary(pulm[,-1]))
+```
+
+A brief visual inspection of the histograms for each variable indicates each appears to be relatively normal. Age, ratio, and DLCO variables appear to have a large amount of variance.
+
+### Clustering
+```{r clustering, warning=FALSE, echo=FALSE, tidy=TRUE}
+comparisons <- c("Sarcoid", "Asthma", "Emphysema", "IPF-Interstitial Pulm Fibrosis", "Scleroderma", "PPHT-Pulmonary Hypertension", "COPD-Chron Obstr Pulm Disease", "Pneumonia", "Bronchiectasis", "Lung Mass,Pulm. Nodule", "Sjogren's Syndrome", "Unspecified Condition", "Rheumatoid Arthritis", "Pneumonitis,Hypersensitivity","Connective Tissue Disease", "CF-Cystic Fibrosis", "SLE-System Lupus Erythematosus", "ILD-Interstitial Lung Disease", "IPF-Idiopathic Pulm Fibrosis","Scleroderma/Systemic Sclerosis", "Dyspnea/Apnea/SOB", "Sarcoidosis")
+
+pulm <- pulm[pulm$Diagnosis %in% comparisons,]
+
+pulm_f <- subset(pulm, pulm$Sex == "FEMALE")
+pulm_m <- subset(pulm, pulm$Sex == "MALE")
+
+means <- aggregate(pulm[,4:13], by = list(diagnosis = pulm$Diagnosis), FUN = mean)
+means_f <- aggregate(pulm_f[,4:13], by = list(diagnosis = pulm_f$Diagnosis), FUN = mean)
+means_m <- aggregate(pulm_m[,4:13], by = list(diagnosis = pulm_m$Diagnosis), FUN = mean)
+rownames(means) <- means[,1]
+rownames(means_m) <- means_m[,1]
+rownames(means_f) <- means_f[,1]
+
+hc <- hclust(dist(means), "single")
+hc_m <- hclust(dist(means_m), "single")
+hc_f <- hclust(dist(means_f), "single")
+
+# Hierarchical Clustering
+
+# plot(hc)
+# plot(hc_m, hang=-1,main="Male Clusters, Averaged", ylab=NULL)
+# plot(hc_f, hang=-1,main="Female Clusters, Averaged", ylab=NULL)
+
+# Model-based clustering
+
+mc <- Mclust(means)
+mc_m <- Mclust(means_m)
+mc_f <- Mclust(means_f)
+
+i <- 7 # FVC/FEV1 Ratio
+j <- 11 # DLCO_%pred
+
+# all plot
+# plot(means[,i], means[,j], xlab=colnames(means)[i], ylab=colnames(means)[j], main = "Clusters for all patients", type="n") +
+# for(s in 1:nrow(means)){
+  # text(means[s,i], means[s,j], rownames(means)[s], col=mc$classification[s])
+# }
+
+# male plot
+#plot(means_m[,i], means_m[,j], xlab=colnames(means_m)[i], ylab=colnames(means_m)[j], main = "Clusters for male patients", type="n") +
+#for(s in 1:nrow(means_m)){
+#  text(means_m[s,i], means_m[s,j], rownames(means_m)[s], col=mc_m$classification[s])
+#}
+
+# female plot
+plot(means_f[,i], means_f[,j], xlab=colnames(means_f)[i], ylab=colnames(means_f)[j], main = "Clusters for female patients", type="n") +
+for(s in 1:nrow(means_f)){
+  text(means_f[s,i], means_f[s,j], rownames(means_f)[s], col=mc_f$classification[s])
+}
+```
+
+Clustering analysis using hierarchical and model-based clustering yields interesting results. After averaging the lung function measures based on diagnosis, then stratifying the data by sex (since we might suspect some significant differences in lung function by sex, largely associated with height), there were 9 ideal clusters in model-based clustering regardless of stratification, as shown above for female patients . When plotted against the FEV1/FVC Ratio (X-axis, an indicator for obstructive lung disease when below 70%) and percent predicted DLCO (Y-axis, an indicator for restrictive lung disease<70% being abnormal, <40% being severe restrictive disease), we do see some difference in clustering based on sex depicted in the graphs below - Sarcoid (and Sarcoidosis, the same diagnosis) show up centrally in each plot, but the other diagnoses associated with it vary when comparing crude and stratified groups, indicating there may be some difference in disease process based on sex, but which may similarly be explained by disease incidence differing due to sex resulting in selection bias in this hospital catchment population.
+
+
+```{r pca-fa, warning=FALSE, echo=FALSE}
+# center data
+center <- function(v) v-mean(v) # centering function, subtract the mean of the input vector from the original vector
+sarcoid_centered <- apply(sarcoid[,-1:-4], 2, center)
+pulm_cent <- apply(pulm[,-1:-4], 2, center)
+
+# standardize the data (to get the correlation matrix)
+stand <- function(v) (v-mean(v)) / sd(v) # standardizing function
+sarcoid_standardized <- apply(sarcoid_centered, 2, stand)
+pulm_sd <- apply(pulm_cent, 2, center)
+
+# principal component analysis
+pc_sarc <- princomp(sarcoid_standardized)
+pc_pulm <- princomp(pulm_sd)
+#spca(sarcoid_standardized, K=2, para=c(4,4), sparse="varnum")
+#pca_pulm <- spca(pulm_sd, K=2, para=c(4,4), sparse="varnum")
+#pca_pulm
+
+# factor analysis
+factanal(sarcoid[,-1:-4], 2, scores="regression", rotation = "varimax")
+#pulm_fa <- factanal(pulm[-1:-4], 2, scores="regression", rotation = "varimax")
+#pulm_fa
+```
+### Principal Component and Factor Analysis
+
+With principal component analysis (not shown), after centering and standardizing the data (due to some larger marginal variances), the first principal component tracks lung function performance contrasting age and BMI variables against the ratio variable (an indicator of obstructive disease processes) and DLCO (a measure of functional alveoli surface area and impairment). The second principal component contrasts lung function performance based age, BMI, and the ratio variable only.
+
+With factor analysis, the first latent factor accounts for about `49.0%` of the variation, and the second factor only accounts for `21.0%` of the variation in the data. The first factor indicates a contrast in lung function based on age, BMI, and the ratio of FEV1/FVC (a measure of obstruction) compared to the remaining variables, while the second factor indicates a contrast in average lung function based on age against the remaining variables.
+
+### Multivariate 2-Sample Comparison
+
+```{r MANOVA, warning=FALSE, echo=FALSE}
+# difference based on race
+n = nrow(pulm)
+white = subset(pulm, Race == "White or Caucasian" & Diagnosis == "Sarcoid")
+black = subset(pulm, Race == "Black or African American" & Diagnosis == "Sarcoid")
+
+white.bar = colMeans(white[,5:12])
+black.bar = colMeans(black[,5:12])
+
+s.white = cov(white[,5:12])
+s.black = cov(black[,5:12])
+
+n.white = nrow(white)
+n.black = nrow(black)
+
+s.p.race = ((n.white - 1)* s.white +(n.black -1) * n.black) / (n.white +n.black -2)
+T2_race = (white.bar - black.bar) %*% solve((1/n.white + 1/n.black) *s.p.race) %*%
+  as.matrix(white.bar - black.bar)
+
+p = 9
+alpha = 0.05
+
+f.cutoff_race = ((n.white + n.black -2)*p) / (n.white + n.black - p -1) * qf(1-alpha, p, n.white +n.black - p -1)
+
+T2_race > f.cutoff_race
+
+pf(T2_race / (((n.white + n.black -2)*p) / (n.white+n.black - p - 1)), p, n.white+n.black -p -1, lower.tail = F)
+```
+
+Based on a 2-way MANOVA, the test statistic obtained is `r T2_race`, with a critical value of `r f.cutoff_race` for alpha = `r alpha`. Since the test statistic is much larger than the critical value, we can reject the null hypothesis and conclude that pulmonary function measures are significantly different between black and white populations, an indication that there may be a health disparity potentially attributable to differences in healthcare access, especially if race is a proxy for differences in other social determinants of health. As well, a calculated p-value of 2.95e-06 is much smaller than the alpha = 0.05, so we can reject the null hypothesis that there is no difference in pulmonary measures between white and black populations with sarcoidosis.
+
+```{r 1MANOVA, warning=FALSE, echo=FALSE, include=FALSE}
+
+# analyzing on sex
+fit = manova(cbind(FVC, FEV1, Ratio, TLC_N2, TLC_Box, DLCO)~Sex, data=pulm)
+summary(fit, test="Wilks")
+fit2 = aov(cbind(FVC, FEV1, Ratio, TLC_N2, TLC_Box, DLCO)~Sex, data = pulm)
+summary(fit2)
+
+# analyzing on race
+fit.race = manova(cbind(FVC, FEV1, Ratio, TLC_N2, TLC_Box, DLCO)~Race, data=pulm)
+summary(fit.race, test="Wilks")
+fit2.race = aov(cbind(FVC, FEV1, Ratio, TLC_N2, TLC_Box, DLCO)~Race, data = pulm)
+summary(fit2.race)
+```
+
+## Conclusion
+
+After clustering, principal component and factor analysis, and a 2-way MANOVA sample analysis, identifying predictor variables for the response (a diagnosis of sarcoidosis) can still be difficult for physicians. However, with this analysis, based on clustering stratified by sex, some research questions can pursued to identify disease process differences by sex and whether women with the disease present phenotypes similar to other well-known diseases such as rheumatoid arthritis. As well, an apparent health disparity exists in the measures of pulmonary function based on race - researchers might further investigate underlying structural or social determinants of health contributing to this health inequity.

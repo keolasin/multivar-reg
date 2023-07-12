@@ -1,0 +1,311 @@
+---
+title: "Multivariate Regression Lab 4"
+author: "Matthew Reyes"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Multivariable Regression Lab 4
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Lab 4 Notes
+
+Graphics with ggplot (5.1, 5.2)
+More on data frames (3.5)
+
+### ggplot Graphics
+
+1. Using the `flower.xls` dataset
+
+```{r importing}
+
+# libraries/packages
+libraries <- c(
+  "tidyr",
+  "readr",
+  "dplyr",
+  "knitr",
+  "ggplot2",
+  "glmnet",
+  "readxl"
+)
+lapply(libraries, require, character.only = TRUE)
+
+# import data
+flowers <- read.excel("data/flower.xls")
+
+```
+
+2. generating the plot
+
+```{r generate-plot}
+
+# includes the data and mapping layers
+ggplot(mapping = aes(x = weight, y = shootarea), data = flowers)
+
+# include a geom layer and lines
+ggplot(aes(x = weight, y = shootarea), data = flowers) +
+    geom_point() +
+    geom_line()
+
+# include a smoothed line
+# geom_smooth() with color in the aes() of the geom_smooth() function
+ggplot(aes(x = weight, y = shootarea), data = flowers) +
+    geom_point() +
+    geom_smooth(aes(colour = nitrogen), method = "lm", se = FALSE)
+
+# moving color to the ggplot function now colors the data points associated with the fitted smooth lines
+# black line is now a fitted lm for all the data points
+ggplot(aes(color = nitrogen, x = weight, y = shootarea), data = flowers) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE) +
+    geom_smooth(method = "lm", se = FALSE, color = "black")
+
+```
+
+3. Customizing our plot further
+
+```{r custom-plot}
+
+# Further customizing our plot
+ggplot(aes(color = nitrogen, x = weight, y = shootarea), data = flowers) +
+    geom_point(aes(shape = nitrogen), size = 2, alpha = 0.6) +
+    geom_smooth(method = "lm", se = FALSE) +
+    geom_smooth(method = "lm", se = FALSE, linetype = 2, alpha = 0.6, color = "black") +
+    geom_hline(aes(yintercept = mean(shootarea)), size = 0.5, colour = "black", linetype = 3) +
+    xlab("Weight of flower (g)") + # X-axis label
+    ylab("Area of shoot"~(cm^2)) + # Y-label axis
+    labs(
+        shape = "Nitrogen\nConcentration",
+        color = "Nitrogen\nConcentration",
+        caption = "Regression assumptions are unvalidated") +
+    scale_colour_manual(values = c("#5c1aae", "#ae5c1a", "#1aae5c"),
+        labels = c("High","Medium","Low")) +
+    scale_shape_manual(values = c(15, 17, 19),
+        labels = c("High","Medium","Low"))
+
+# Further customizing our plot, now with factored nitrogen to specify the order of levels by concentration
+flowers$nitrogen <- factor(flowers$nitrogen, levels = c("high", "medium", "low"))
+
+# plot
+ggplot(aes(color = nitrogen, x = weight, y = shootarea), data = flowers) +
+    geom_point(aes(shape = nitrogen), size = 2, alpha = 0.6) +
+    geom_smooth(method = "lm", se = FALSE) +
+    geom_smooth(method = "lm", se = FALSE, linetype = 2, alpha = 0.6, color = "black") +
+    geom_hline(aes(yintercept = mean(shootarea)), size = 0.5, colour = "black", linetype = 3) +
+    xlab("Weight of flower (g)") + # X-axis label
+    ylab("Area of shoot"~(cm^2)) + # Y-label axis
+    labs(
+        shape = "Nitrogen\nConcentration",
+        color = "Nitrogen\nConcentration",
+        caption = "Regression assumptions are unvalidated") +
+    scale_colour_manual(values = c("#5c1aae", "#ae5c1a", "#1aae5c"),
+        labels = c("High","Medium","Low")) +
+    scale_shape_manual(values = c(15, 17, 19),
+        labels = c("High","Medium","Low"))
+
+# plot with 4 quadrants by treatment group
+ggplot(aes(color = nitrogen, x = weight, y = shootarea), data = flowers) +
+    geom_point(aes(shape = nitrogen), size = 2, alpha = 0.6) +
+    geom_smooth(method = "lm", se = FALSE) +
+    geom_smooth(method = "lm", se = FALSE, linetype = 2, alpha = 0.6, color = "black") +
+    geom_hline(aes(yintercept = mean(shootarea)), size = 0.5, colour = "black", linetype = 3) +
+    xlab("Weight of flower (g)") + # X-axis label
+    ylab("Area of shoot"~(cm^2)) + # Y-label axis
+    labs(
+        shape = "Nitrogen\nConcentration",
+        color = "Nitrogen\nConcentration",
+        caption = "Regression assumptions are unvalidated") +
+    scale_colour_manual(values = c("#5c1aae", "#ae5c1a", "#1aae5c"),
+        labels = c("High","Medium","Low")) +
+    scale_shape_manual(values = c(15, 17, 19),
+        labels = c("High","Medium","Low")) +
+    facet_grid(~ block + treat)
+
+# plot with 4 quadrants by treatment group, own graphs (basically a 2x2)
+# displays tip type crossed with treatment groups, 1 or 2
+ggplot(aes(color = nitrogen, x = weight, y = shootarea), data = flowers) +
+    geom_point(aes(shape = nitrogen), size = 2, alpha = 0.6) +
+    geom_smooth(method = "lm", se = FALSE) +
+    geom_smooth(method = "lm", se = FALSE, linetype = 2, alpha = 0.6, color = "black") +
+    geom_hline(aes(yintercept = mean(shootarea)), size = 0.5, colour = "black", linetype = 3) +
+    xlab("Weight of flower (g)") + # X-axis label
+    ylab("Area of shoot"~(cm^2)) + # Y-label axis
+    labs(
+        shape = "Nitrogen\nConcentration",
+        color = "Nitrogen\nConcentration",
+        caption = "Regression assumptions are unvalidated") +
+    scale_colour_manual(values = c("#5c1aae", "#ae5c1a", "#1aae5c"),
+        labels = c("High","Medium","Low")) +
+    scale_shape_manual(values = c(15, 17, 19),
+        labels = c("High","Medium","Low")) +
+    facet_grid(block ~ treat) +
+    theme_classic()
+
+# Adding a theme function to our graph
+theme_rbook <- function(
+    base_size = 13, 
+    base_family = "", 
+    base_line_size = base_size/22, 
+    base_rect_size = base_size/22 ) {
+        theme(
+            axis.title = element_text(size = 13),
+            axis.text.x = element_text(size = 10),
+            axis.text.y = element_text(size = 10),
+            plot.caption = element_text(size = 10, face = "italic"),
+            panel.background = element_rect(fill="white"),
+            axis.line = element_line(size = 1, colour = "black"),
+            strip.background = element_rect(fill="#cddcdd"),
+            panel.border = element_rect(colour = "black", fill=NA),
+            strip.text = element_text(colour = "black"),
+            legend.key  = element_blank()
+        )
+}
+
+# apply our new theme to the graph
+ggplot(aes(color = nitrogen, x = weight, y = shootarea), data = flowers) +
+    geom_point(aes(shape = nitrogen), size = 2, alpha = 0.6) +
+    geom_smooth(method = "lm", se = FALSE) +
+    geom_smooth(method = "lm", se = FALSE, linetype = 2, alpha = 0.6, color = "black") +
+    geom_hline(aes(yintercept = mean(shootarea)), size = 0.5, colour = "black", linetype = 3) +
+    xlab("Weight of flower (g)") + # X-axis label
+    ylab("Area of shoot"~(cm^2)) + # Y-label axis
+    labs(
+        shape = "Nitrogen\nConcentration",
+        color = "Nitrogen\nConcentration",
+        caption = "Regression assumptions are unvalidated") +
+    scale_colour_manual(values = c("#5c1aae", "#ae5c1a", "#1aae5c"),
+        labels = c("High","Medium","Low")) +
+    scale_shape_manual(values = c(15, 17, 19),
+        labels = c("High","Medium","Low")) +
+    facet_grid(block ~ treat) +
+    theme_rbook()
+```
+
+### Data Frames
+
+- `dim`/`nrow`/`ncol` functions return the dimension, number of rows, number of cols of a data frame (or an array
+- `head`/`tail` functions:
+    - return the first/last several rows of a data frame (or first/last parts of an object)
+- `view` function: invoke a data viewer
+- `summary`: summarize a data frame or an object
+- `str`: display the structure of a data frame or object
+- `table`: build a contingency table of the counts at each combination of factor levels
+
+```{r tables}
+
+# return a vector of counts at each treat level
+table(flowers$treat)
+
+# return a matrix of counts at each combination of the treat and nitrogen levels
+table(flowers$treat, flowers$nitrogen)
+
+# return an array of counts at each combination of the treat and nitrogen levels
+table(flowers$treat, flowers$nitrogen, flowers$block)
+
+# it's fine if one variable is continuous
+table(flowers$treat, flowers$flowers)
+
+
+```
+
+apply function: apply functions over each row or each column of a data frame (or over
+array margins).
+
+```{r apply-function}
+
+apply(flowers[,4:8], 2, mean)
+#Apply the mean function over each column of flower[,4:8].
+apply(flowers[,4:8], 1, mean)
+#Apply the mean function over each row of flower[,4:8].
+data("HairEyeColor")
+apply(HairEyeColor, 1, mean)
+#Apply the mean function over the first dimension of HairEyeColor.
+apply(HairEyeColor, 2, mean)
+#Apply the mean function over the second dimension of HairEyeColor.
+apply(HairEyeColor, c(1,2), mean)
+#Apply the mean function over the first and second dimension of HairEyeColor.
+
+```
+
+Check the usage of the lapply, sapply, tapply functions if you are interested.
+
+### Distributions
+
+Normal and binomial distributions as examples, along with generating random numbers
+
+```{r randoms}
+
+# generate 100 random numbers from the normal distribution N(1,1.2^2) with mean 1 and variance 1.2
+x <- rnorm(100, mean = 1, sd = 1.2)
+
+# check our stats of x
+mean(x)
+var(x)
+
+# generate 100 random numbers from the binomial distribution B(10, 0.7). Remember, the binomial distribution B(n,p) has mean np and variance np(1-p)
+x_binom <- rbinom(100, size = 10, prob = 0.7)
+
+# check our binom stats
+mean(x_binom)
+var(x_binom)
+
+```
+
+Computing a cumulative distribution function. For random variable X, the cumulative dist. function F(x) of the probability distribution is the probability of X < x.
+
+```{r cumulative-dist}
+
+# returns 0.5, because P(X < 0) = 0.5 if X ~ N(0, 1)
+pnorm(0, mean = 0, sd = 1)
+
+# returns 0.9750021, because (see pdf)
+pnorm(1.96, mean = 0, sd = 1)
+
+# check by running integrate fxn
+integrate(dnorm, lower = -100, upper = 1.96)
+
+# returns 0.04734899, because (see pdf)
+pbinom(4, size = 10, prob = 0.7)
+
+# can verify by running:
+sum(choose(10, c(0:4))*0.7^c(0:4)*0.3^c(10:6))
+
+```
+
+Probability density function or the probability mass fxn. For one continuous random var X, the probability density function f(x) satisfies P( X < x ) = integral( f(x)dx ). 
+
+For discrete random var X, the prob mass function m(x) is the probability of X = x.
+
+```{r probability-functions}
+
+dnorm(0, mean = 0, sd = 1)
+
+# verify:
+1/sqrt(2*pi)*exp(0)
+
+
+dbinom(4, size = 10, prob = 0.7)
+
+# verify:
+choose(10,4)*0.7^4*0.3^6
+
+```
+
+Quantile function. Informally, the quantile function is the inverse of the cumulative distribution function
+
+```{r quantile-function}
+
+# returns 1.959964. This is because P( X , 1.959964 ) ~~ 0.975 if X ~ N (0,1)
+qnorm(0.975, mean = 0, sd = 1)
+
+# binom function, returns 5
+qbinom(0.04734899, size = 10, prob = 0.7)
+
+# returns 4, because 0.04734898 < P( X < 4 ) < 0.04734899 < P( X < 5 ), if X ~ B(10, 0.7)
+qbinom(0.04734898, size = 10, prob = 0.7)
+
+```

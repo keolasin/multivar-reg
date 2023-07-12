@@ -1,0 +1,214 @@
+---
+title: 'Homework 2: Multivariate Regression'
+author: "Matthew Reyes"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Homework 2 Assignment
+
+```{r setup, include = FALSE}
+
+# install necessary packages
+# install.packages()
+ 
+# include libraries/packages for analysis
+libraries <- c(
+  "tidyr",
+  "readr",
+  "dplyr",
+  "knitr",
+  "ggplot2",
+  "glmnet",
+  "readxl",
+  "MASS"
+)
+lapply(libraries, require, character.only = TRUE)
+
+```
+
+## Problem 1
+
+### a)
+
+We first remove the 2 outliers and fit the model. Next, in the following computation, we create a fitted linear regression model with percent body fat (using siri's equation; `siri`) as a response variable, and numerous other continuous variables as predictors. The beta coefficient for the `age` predictor is calculated to be `0.04307`, from the summary of the fitted model below. Additionally, the plots for the linear regression model are shown below.
+
+```{r}
+
+# read in data
+bodyfat1 <- read.table("Data-HW2-Bodyfat.txt", header = FALSE)
+
+# remove outliers
+ids = c(seq(1,nrow(bodyfat1))[bodyfat1[,4]>300], seq(1,nrow(bodyfat1))[bodyfat1[,5]<40])
+bodyfat = bodyfat1[-ids,]
+
+# rename variables
+colnames(bodyfat) <- c("Case","brozeks","siri","density","age","weight","height","adiposity_index","fat_free_weight","neck","chest","abdomen","hip","thigh","knee","ankle","biceps","forearm","wrist")
+
+# explore data
+head(bodyfat)
+
+# descriptive stats summary of the data
+summarize(bodyfat)
+
+# siri's bodyfat equation as response in a fitted lm
+fit <- lm(bodyfat$siri ~ bodyfat$age + bodyfat$weight + bodyfat$height + bodyfat$neck + bodyfat$chest + bodyfat$abdomen + bodyfat$hip + bodyfat$thigh + bodyfat$knee + bodyfat$ankle + bodyfat$biceps + bodyfat$forearm + bodyfat$wrist, data = bodyfat)
+
+# Estimation of Beta, testing Bp = 0, R2:
+summary(fit)
+
+# find the predicted response vector
+#fit$fitted.values
+
+# find the residual vector:
+#fit$residuals
+
+# plotting our model
+pairs(~age+weight+height+neck+chest+abdomen+hip+thigh+knee+ankle+biceps+forearm+wrist, data = bodyfat)
+```
+### b)
+
+Because the beta coefficient for age is `0.04307` with a p-value of `0.4100` > an alpha of 0.05, it tells us that age is not a strong predictor variable in this fitted linear regression model with siri's bodyfat percentage as a response, where the null hypothesis is that some Beta_j = 0; although the beta coefficient is not 0 for age, the test-statistic associated with it and it's p-value indicate it is not a significant result, and we fail to reject the null hypothesis that age is a strong predictor variable in this model.
+
+### c)
+
+```{r residuals}
+## residuals
+plot(fitted(fit), resid(fit))
+```
+Based on the residual plot, above, it would appear that our assumptions required for the linear regression model are not broken:
+
+1) that the mean function is linear,
+2) that the variance is constant,
+3) and that the response distribution is relatively normal.
+
+Because the above plot has no strongly discernible pattern apart from a good variance/spread, we believe these assumptions are valid for this model.
+
+### d)
+
+```{r new-fit}
+
+fit2 <- lm(bodyfat$siri ~ bodyfat$age + bodyfat$weight + bodyfat$height, data = bodyfat)
+
+# Estimation of Beta, testing Bp = 0, R2:
+summary(fit2)
+
+# find the predicted response vector
+#fit2$fitted.values
+
+# find the residual vector:
+#fit2$residuals
+
+# plotting our model
+pairs(~age+weight+height, data = bodyfat)
+
+# anova
+anova(fit,fit2)
+
+```
+Because we have a large F-statistic value (`13.662`) and very small p-value for our analysis of variance between the two models, we can reject the null hypothesis that reduced model is preferred, and instead accept the alternative hypothesis that the full model is preferred given a alpha-value of 0.05.
+
+```{r more-plots}
+# more plots
+## fitted values
+#plot(fitted(fit), bodyfat$age)
+
+## cook's distance
+plot(cooks.distance(fit))
+
+## leverage scores/hat values plot
+plot(hatvalues(fit))
+
+# check model fit/variable selection
+#x <- as.matrix(bodyfat)
+#x <- x[,colnames(x) != "age"]
+#fit.matrix
+#fit.matrix <- as.matrix(bodyfat)
+#fit.matrix <- fit.matrix[,]
+#fit3 <- glmnet(fit.matrix, bodyfat$age)
+#fit3
+#plot(fit3, xvar="lambda", label=TRUE)
+
+```
+
+## Problem 2
+
+### a)
+
+The fitted model equation would be:
+
+Sales (y) = Beta_0 + Beta1(Price) + Beta2(Urban) + Beta3(US), 
+
+with respect to reference categories where Urban and US categorical variables have 2 levels, comparing those that ARE urban and in the US to those that are not.
+
+```{r 2a}
+
+# read in data
+
+load("Data-HW2-Carseats.RData")
+
+carseats <- Carseats_data
+
+# work around for the load() function not working with knit for some reason... 
+# really annoying, unsure why this isn't working
+# write.csv(Carseats_data, "carseats.csv",row.names = FALSE) 
+
+# explore data
+head(carseats)
+
+# use factor vector to encode urban/US categorical variables
+#carseats$Urban <- factor(carseats$Urban)
+#carseats$US <- factor(carseats$US)
+
+# creating dummy variables for the categorical factor variables US and Urban (2 levels each)
+#carseats.Urban.yes <- as.numeric(carseats$Urban == 1)
+#carseats.US.yes <- as.numeric(carseats$US == 1)
+#carseats2 <- cbind(carseats, carseats.Urban.yes, carseats.Urban.no, carseats.US.yes, carseats.US.no)
+
+car_fit <- lm(Sales ~ Price+Urban+US, data=carseats)
+
+# Estimation of Beta, testing Bp = 0, R2:
+summary(car_fit)
+
+# find the predicted response vector
+#fit$fitted.values
+
+# find the residual vector:
+#fit$residuals
+
+# plotting our model
+pairs(~Price+Urban+US, data = carseats)
+
+```
+
+### b)
+
+The summary below indicates that the predictor variables of price (a continuous variable; beta coefficient of `-0.054459`) and whether the car is in the US (a categorical variable); beta coefficient of `1.200573`, compared to not being the US, are strongly associated with sales in the linear regression model given their low p-values < 0.05. In comparison, whether the car is urban (beta-coefficient of `-0.021916`), with reference to the not-urban group, is not significantly associated in the model for the response variable (sales), given it's p-value of `0.936`. Overall, the model is a relatively poor fit, given the R^2 value of `0.2393` and the adjusted R^2 of `0.2335`.
+
+```{r 2b}
+
+summary(car_fit)
+
+```
+
+### c)
+
+Based on the following plots, starting with the residuals plot compared to the fitted values, it would appear that the model follows our assumptions; there's constant variance, a linear mean function, and normal distributions. However, our cook's distance plot indicates many possible outliers in our response variable, meaning the observed sales value lies far outside the fitted model. Finally, the fitted values plot against the observed sales indicate the relatively poor fit of the model overall, since the cloud of values is not densely congregated, indicating that some transformation of our variables may be more appropriate and not suitable for a linear regression as is.
+
+```{r 2c}
+
+## residuals
+plot(fitted(car_fit), residuals(car_fit))
+
+## cook's distance
+plot(cooks.distance(car_fit))
+
+## leverage scores/hat values plot
+plot(hatvalues(car_fit))
+
+## fitted
+plot(fitted(car_fit),carseats$Sales)
+
+```

@@ -1,0 +1,300 @@
+---
+title: 'Homework 1: Multivariate Regression'
+author: "Matthew Reyes"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Homework 1 Assignment
+
+```{r setup, include = FALSE}
+
+# install necessary packages
+# install.packages()
+ 
+# include libraries/packages for analysis
+libraries <- c(
+  "tidyr",
+  "readr",
+  "dplyr",
+  "knitr",
+  "ggplot2",
+  "glmnet",
+  "readxl",
+  "MASS"
+)
+lapply(libraries, require, character.only = TRUE)
+
+```
+
+## Problem 1
+
+### Question
+
+The data “Data-HW1-Cognition.dat” were collected to test two psychological models of numerical cognition. Does the processing of numbers depend on the way the numbers are presented (words, Arabic digits)? Thirty-two subjects were required to make a series of quick numerical judgments about two numbers presented as either two number words (“two,” “four”) or two single Arabic digits (“2,” “4”). The subjects were asked to respond “same” if the two numbers had the same numerical parity (both even or both odd) and “different” if the two numbers had a different parity (one even, one odd). Half of the subjects were assigned a block of Arabic digit trials, followed by a block of number word trials, and half of the subjects received the blocks of trials in the reverse order. Within each block, the order of “same” and “different” parity trials was randomized for each subject. For each of the four combinations of parity and format, the median reaction times for correct responses were recorded for each subject. Here: 
+
+Y1 = median reaction time for word format-different parity combination
+
+Y2 = median reaction time for word format-same parity combination
+
+Y3 = median reaction time for Arabic format-different parity combination
+
+Y4 = median reaction time for Arabic format-same parity combination
+
+Test for treatment effects.
+
+### Null Hypothesis
+
+For this study, the null hypothesis would be:
+
+Hnull: There is no significant difference in mean outcomes (median reaction times) between the treatment groups.
+
+### Appropriate Multivariate Test Statistic
+
+Based on the study design, that this is a single participant group, split into two groups (numbers-first or words-first), asked to assess parity (both numbers are odd/even or not), the combinations of the different treatments can be stratified into 4 distinct treatment groups and the median reaction times measured (defined above as Y1-4). Thus, it is a repeated measures study design, and a multivariate T^2 test statistic can be analyzed to assess if a difference exists between treatment groups in the study.
+
+This is similar to the dog heartbeat example from lecture.
+
+### Similar univariate test statistic
+
+For this study design, there is not a great analog from univariate statistics to attempt to test the relationship.
+
+### Assumptions
+
+For the interpretation of this study design to be reasonably assessed, key assumptions behind the repeated measures study design and subsequent analysis should be acknowledged and checked to see if the underlying data meets those assumptions. In this scenario, to have a T^2 squared test statistic that we reasonably trust, the underlying population data should be normally distributed, or our sample sizes should be sufficiently large. Failing these assumptions, our faith in the interpretation based on the calculated T^2 test statistic is reduced.
+
+This sample size is n = 32
+
+### R Implementation and Computation
+
+```{r problem-1}
+
+# read in data
+cognition <- read.table("data/Data-HW1-Cognition.dat", header = FALSE)
+
+# explore data
+head(cognition)
+dim(cognition)
+names(cognition)
+
+# descriptive stats summary of the data
+summarize(cognition)
+
+# repeated measures design
+# want to find test-statistic: T2 = t(n(C*mean(Y)) %*% solve(t(CSC)) %*% C(solve(mean(Y)))
+
+## compute the sample size
+(n1 <- nrow(cognition))
+
+## compute the mean, returns vector of means of Vx in y1_bar
+(y1_bar <- apply(cognition, 2, mean))
+
+## compute the variance, returns an identity matrix
+(s1 <- cov(cognition))
+
+## define our "C" term matrix (see Lab 6: review OneNote notes)
+# this matrix applies for testing the null hypothesis that
+# mean_treatment1 = mean_treatment2 = mean_treatment3 = mean_treatment4, or, 
+# mean_treatment1 = mean_treatment2,
+# mean_treatment2 = mean_treatment3,
+# mean_treatment3 = mean_treatment4
+(c1 <- cbind(c(1,0,0), c(-1,1,0), c(0,-1,1), c(0,0,-1)))
+
+## compute alpha term
+alpha1 <- c1 %*% y1_bar
+alpha1
+
+## compute sigma^-1 term
+cs1 <- solve(c1 %*% s1 %*% t(c1))
+cs1
+
+## compute the test-statistic T2
+T2 <- n1*t(alpha1) %*% cs1 %*% alpha1
+
+## compute p-value
+q_count <- ncol(cognition) -1
+p_val <- 1 - pf( 
+  (n1-q_count)*(T2)/((n1-1)*q_count), q_count, n1 - q_count
+)
+
+```
+
+### Interpretation
+
+For this study design and data, given the assumptions mentioned above are satisfied, a calculated T^2 test-statistic of `r T2` with a p-value of `r p_val` would indicate that we can refute the null hypothesis, meaning that there is a statistically significant difference between the mean outcomes (median reaction time) based on treatment group assignment. 
+
+## Problem 2
+
+### Question
+
+In the first phase of a study of the cost of transporting milk from farms to dairy plants, a survey was taken of firms engaged in milk transportation. Cost data on Y1 = fuel, Y2 = repair, and Y3 = capital, all measured on a per-mile basis, are presented in the data “Data-HW1-Transportation.dat” for n1 = 36 gasoline and n2 = 23 diesel trucks. Test for differences in the mean costs between the gasoline and diesel trucks.
+
+### Similar univariate test statistic
+
+For this study design, an initial analysis through univariate methods might use a two-sample T-test to assess whether a statistically significant difference in cost (Y1-Y3) between the two sample populations (gasoline or diesel trucks) exists.
+
+### Appropriate multivariate test statistic
+
+Since there are multiple cost variables measured of interest in this study, it's more appropriate to perform a multivariate test for this study design, specifically a multivariate two-sample comparison test. 
+
+### Assumptions
+
+There are several assumptions that should be assessed for the interpretation of this test-statistic to withstand scrutiny. First, the samples from the two populations should be truly independent of one another. This is reasonable to assume is true in this study, as the gasoline and diesel trucks studied are inherently independent based their fuel source and engine design. Second, the underlying population should be normally distributed or a sufficiently large sample size n should be obtained. Lastly, the samples should have approximately the same covariances between outcomes, otherwise the T^2 statistic will more closely approximate an F-distribution.
+
+### R Implementation and Computation
+
+```{r problem-2}
+
+# read in data
+transit <- read.table("data/Data-HW1-Transportation.dat", header = FALSE)
+
+# explore data
+head(transit)
+dim(transit)
+names(transit)
+
+# descriptive stats summary of the data
+summarize(transit)
+
+# setup variables
+gasoline <- transit[transit[,4] == "gasoline", 1:3]
+diesel <- transit[transit[,4] == "diesel", 1:3]
+
+# want to compute the test-statistic:
+# T2 = t(Y1_bar - Y2_bar) %*% solve(Sp(1/n1 + 1/n2)) %*% (Y1_bar - Y2_bar)
+
+# setup variables
+## sample sizes
+n_gasoline <- nrow(gasoline)
+n_diesel <- nrow(diesel)
+
+## means
+mean_gasoline <- matrix(apply(gasoline, 2, mean), ncol=1)
+mean_diesel <- matrix(apply(diesel, 2, mean), ncol=1)
+mean_diff <- mean_gasoline - mean_diesel
+
+# Sp = pooled sample covariance matrix
+Sp <- ((n_gasoline -1)*cov(gasoline) + (n_diesel - 1)*cov(diesel)) / (n_gasoline + n_diesel - 2)
+
+# compute test statistic using our variable definitions above:
+test_stat <- t(mean_diff) %*% solve(Sp*(1/n_gasoline + 1/n_diesel)) %*% mean_diff
+
+# compute my p-value
+p_count <- 3
+p2_val <- 1 - pf(
+  test_stat*(n_gasoline+n_diesel-p_count-1) / ((n_gasoline*n_diesel-2)*p_count), p_count, n_gasoline+n_diesel-p_count-1
+)
+
+```
+
+### Interpretation
+
+Based on our analysis, we fail to refute the null hypothesis (that there is no significant difference between truck type and cost variables), based on the computed T^2 test-statistic of `r test_stat` and p-value of `r p2_val` (since `r p2_val` is much greater than an alpha of `0.05`), assuming that the prior mentioned assumptions hold true for this study sample during the study period.
+
+## Problem 3
+
+### Question
+
+Researchers have suggested that a change in skull size over time is evidence of the interbreeding of a resident population with immigrant populations. 1) Four measurements were made of gasoline Egyptian skulls for three different time periods: period 1 is 4000 B.C., period 2 is 3300 B.C., and period 3 is 1850 B.C. The data are recorded in “Data-HW1-Skull.dat”. The measured variables are:
+
+Y1 = maximum breadth of skull (mm)
+
+Y2 = base height of skull (mm)
+Y3 = base length of skull (mm)
+Y4 = nasal height of skull (mm)
+
+Test for differences in skull size over different time periods.
+
+### Similar univariate test statistic
+
+A similar initial univariate analysis might compute a one-way analysis of variance (ANOVA) for a single outcome variable from the varying populations. However, we have multiple populations (based on time-period) and multiple outcome variables (skull-sizes).
+
+### Appropriate multivariate test statistic
+
+Because we have more than 2 populations to compare along with multiple skull size outcome variables (Y1-Y4), a more appropriate analysis would be a one-way multivariate analysis of variance (MANOVA).
+
+### Assumptions
+
+First, we assume that the populations measured are independent of one another. Given the significant amount of time between the populations, this assumption is safe to assume as true. Next, the population parameters should be normally distributed. Finally, they should have the same covariance matrices. Failing to meet these assumptions will affect the strength of our interpretation.
+
+### R Implementation and Computation
+
+```{r problem-3}
+
+# read in data
+skull <- read.table("data/Data-HW1-Skull.dat", header = FALSE)
+
+# explore data
+head(skull)
+dim(skull)
+names(skull)
+
+# descriptive stats summary of the data
+summarize(skull)
+
+# test statistic: one-way MANOVA
+
+## setup variables
+time_period <- as.factor(skull[,5])
+y <- as.matrix(skull[,1:4])
+
+fit <- manova(y ~ time_period)
+summary(fit, test = "Wilks")
+
+```
+
+### Interpretation
+
+With a Wilks test-statistic of `0.8301` and calculated p-value of `0.04358`, we can reject the null hypothesis (that there is no difference in skull size measures based on time-period population) for this study sample for the given time periods.
+
+## Problem 4
+
+### Question
+
+In one experiment involving remote sensing, the data “Data-HW1-Sensing.dat” record measurements on the variables Y1 = percent spectral reflectance at wavelength 560 nm (green) Y2 = percent spectral reflectance at wavelength no nm (near infrared) for three species (sitka spruce [SS], Japanese larch [JL), and lodgepole pine [LP]) of 1-year-old seedlings taken at three different times (Julian day 150 [1], Julian day 235 [2], and Julian day 320 [3]) during the growing season. The seedlings were all grown with the optimal level of nutrient. Test for a species effect, a time effect, and species-time interaction.
+
+### Similar univariate test statistic
+
+Similar to the previous problem, a univariate ANOVA could be an initial analysis. However, given the number of predictor factor variables of interest and multiple outcome variables, a multivariate analysis is more appropriate.
+
+### Appropriate multivariate test statistic
+
+Accordingly, we should perform a two-way multivariate analysis of variance, allowing us to assess whether an interaction effect exists along with any main effect association between the outcome variables and the factor variables of interest.
+
+### Assumptions
+
+First, the samples should be independent. Next, those samples and their underlying population should be normally distributed. Finally, they should have the same covariance matrices.
+
+### R Implementation
+
+```{r problem-4}
+
+# read in data
+sensing <- read.table("data/Data-HW1-Sensing.dat", header = FALSE)
+
+# explore data
+head(sensing)
+dim(sensing)
+names(sensing)
+
+# descriptive stats summary of the data
+summarize(sensing)
+
+# test statistic: two-way MANOVA
+
+## setup variables
+species <- as.factor(sensing[,3])
+julian_day <- as.factor(sensing[,4])
+
+my_mat <- as.matrix(sensing[,1:2])
+
+fit2 <- manova(my_mat ~ species * julian_day)
+summary(fit2, test = "Wilks")
+
+```
+
+### Interpretation
+
+Based on our two-way MANOVA test above, we can state that there is an interaction effect between species and julian day of measure since the p-value for the Wilks test is much smaller than an alpha of 0.05. As well, each factor variable (species and julian day) alone has a significant effect on outcome variables, independent of the other predictor variable. So, we reject the null hypothesis that 1) there is no significant association between the first variable (species) and outcome variables at any level of the species factor variable; 2) there is no significant association between the second predictor variable (julian day of year) and outcome variables for each factor level of the predictor variable (day of year), and 3) that there is no significant interaction-effect between the two factor variables (species and julian day).

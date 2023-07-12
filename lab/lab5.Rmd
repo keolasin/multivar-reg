@@ -1,0 +1,187 @@
+---
+title: "Multivariate Regression Lab 5"
+author: "Matthew Reyes"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Multivariable Regression Lab 5
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Lab 5 Notes
+
+```{r libraries}
+install.packages("MASS")
+
+libraries <- c(
+  "tidyr",
+  "readr",
+  "dplyr",
+  "knitr",
+  "ggplot2",
+  "glmnet",
+  "readxl",
+  "MASS"
+)
+lapply(libraries, require, character.only = TRUE)
+
+
+```
+
+### Conditional statements
+
+```{r if-else}
+
+if(x>1) { # runs only if x > 1
+    print("x is greater than 1")
+} else { # runs whenever the if conditions are unmet (evaluate to FALSE)
+    print("x is less than 1")
+}
+
+# can also use ifelse function
+ifelse(x > 1, print("x is greater than 1"), print("x is less than 1") # follows form: test, execute if true, execute if false
+
+```
+
+### Loops
+
+```{r while-for}
+
+# while loop, will stop when y = 5 (so the last printed y in the loop will be y = 4)
+y <- 0
+
+while(y < 5){
+    print(y)
+    y <- y+1
+}
+
+# typically used with vectors
+collection <- list([0:5])
+for (i in collection){
+    print(collection[i])
+}
+
+```
+
+### Functions
+
+```{r functions}
+
+inner_product <- function(x, y){
+    z <- x*y
+    return(sum(z))
+}
+x <- matrix(1:16, nrow = 4, ncol = 4)
+y <- matrix(1:16, nrow = 4, ncol = 4)
+
+inner_product(x, y)
+
+```
+
+### Returning lists
+
+```{r list-return}
+
+# create a list of 4 elements
+j <- list("abc", c(1, 2, 3), matrix(2, nrow = 2, ncol = 3), list( 1, "a", "b"))
+
+# extract the fourth element in the list j
+j[[4]]
+
+# extract the second element of the 4th element of the list j
+j[[4]][[2]]
+
+# extract the element with name `num.vec` from the list j
+names(j) <- c("char", "num.vec", "num.mat", "list")
+j$num.vec
+
+```
+
+### Exercise
+
+```{r exercise}
+
+# libraries
+library(MASS)
+
+# create vectors
+vec1 <- c(0,0)
+vec2 <- c(rep(0, times = 2)) # equivalent to above
+
+# create matrices
+matrix1 <- matrix( c(1, 0.5, 0.5, 2), nrow = 2, ncol = 2, byrow = TRUE)
+matrix2 <- matrix( c(2, -0.5, -0.5, 1), nrow = 2, ncol = 2, byrow = TRUE)
+
+# generate 15 random vectors from N(vec1, matrix1) and N(vec2, matrix2)
+vec_pairs1 <- mvrnorm(n = 15, mu = vec1, Sigma = matrix1)
+vec_pairs2 <- mvrnorm(n = 20, mu = vec2, Sigma = matrix2)
+
+# creating the dataframe
+## defining our columns (variables) in the df
+group <- factor(c(1,2), levels = c(1,2))
+
+# element 1 of vec_pairs1, vec_pairs2 = outcome 1,
+# element 2 of vec_pairs2, vec_pairs2 = outcome 2,
+# group level 1 = pair of outcome1, outcome2 belonging to vec_pairs1
+# group level 2 = pair of outcome1, outcome2 belonging to vec_pairs2
+
+
+## generating the df
+df1 <- data.frame(group = 1, outcome1 = vec_pairs1[,1], outcome2 = vec_pairs1[,2])
+df2 <- data.frame(group = 2, outcome1 = vec_pairs2[,1], outcome2 = vec_pairs2[,2])
+
+my_df <- rbind(df1,df2)
+my_df
+
+# calculate alpha^T: t((mean(Y1)-mean(Y2))
+sample_means <- matrix(apply(vec_pairs1, 2, mean) - apply(y2, 2, mean), ncol = 1)
+transposed_means <- t(sample_means)
+
+# calculate sigma^-1: solve({Sp(1/n1 + 1/n2)})
+inverse_sigma <- solve(((15-1)*cov(vec_pairs1)+(20-1)*cov(vec_pairs2))/(15+20-2))
+
+# calculate alpha: (mean(Y1)-mean(Y2))
+sample_means
+
+# calculate test-stat (T-squared)
+## use %*% for matrix multiplication
+t2 <- transposed_means %*% inverse_sigma %*% sample_means
+
+# p-value under the approximation
+p_val <- 1-pchisq(t2, 2)
+p_val
+
+## if p value is less than 0.05 (95% alpha)
+as.numeric(p_val < 0.05)
+
+# Using a loop,
+## set.seed to ensure same random set is used to get reproducible results
+
+# set random seed
+set.seed(123)
+
+# create an empty vector of length 1000
+rej <- rep(NA, 1000)
+
+# fill the vector through the loop
+for (i in c(1:1000)){
+    n1 <- 15
+    n2 <- 20
+    y1 <- vec_pairs1
+    y2 <- vec_pairs2
+    dat <- data.frame(group = c(rep(1, 15), rep(2, 20)),
+                    outcome1 = c(pairs1[,1], pairs2[,1]),
+                    outcome2 = c(pairs1[,2], pairs2[,2]))
+    dat$group <- factor(dat$group, levels = c(1,2))
+
+    d <- matrix(apply(y1, 2, mean) - apply(y2, 2, mean), ncol = 1)
+    sp <- ((n1-1)*cov(y1)+(n2-1)*cov(y2))/(n1+n2-2)
+    test2 <- t(d) %*% solve((1/n1+1/n2)*sp) %*% d
+    rej[i] <- as.numeric(1- pchisq(test2, 2) < 0.05)
+}
+```
+
+rej

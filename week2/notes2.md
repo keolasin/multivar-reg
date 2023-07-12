@@ -9,3 +9,4 @@ Tags: Matrix Algebra, Multivariate Statistics
 
 # Basics, Linear Algebra
 
+See OneNote Lecture 2.

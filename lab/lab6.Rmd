@@ -1,0 +1,142 @@
+---
+title: "Multivariate Regression Lab 6"
+author: "Matthew Reyes"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Multivariable Regression Lab 6
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Lab 6 Notes
+
+```{r libraries}
+
+# include packages
+## install.packages("MASS")
+
+libraries <- c(
+  "tidyr",
+  "readr",
+  "dplyr",
+  "knitr",
+  "ggplot2",
+  "glmnet",
+  "readxl",
+  "MASS"
+)
+lapply(libraries, require, character.only = TRUE)
+
+```
+
+## Exercises
+
+### Problem 1
+
+```{r problem-1 echo=TRUE, eval=TRUE}
+
+# import the data
+p1_data <- read.table("data/lab6/Data-06-16.dat", header = FALSE)
+p1_data <- p1_data[,-5]
+
+# repeated measures design
+# want to find test-statistic: T2 = t(n(C*mean(Y)) %*% solve(t(CSC)) %*% C(solve(mean(Y)))
+
+## compute the sample size
+(n1 <- nrow(p1_data))
+
+## compute the mean, returns vector of means of Vx in y1_bar
+(y1_bar <- apply(p1_data, 2, mean))
+
+## compute the variance, returns an identity matrix
+(s1 <- cov(p1_data))
+
+## define our "C" term matrix (see Lab 6: review OneNote notes)
+(c1 <- cbind(c(1,0,0), c(-1,1,0), c(0,-1,1), c(0,0,-1)))
+
+## compute alpha term
+alpha1 <- c1 %*% y1_bar
+alpha1
+
+## compute sigma term
+cs1 <- solve(c1 %*% s1 %*% t(c1))
+cs1
+
+## compute the test-statistic T2
+T2 <- n1*t(alpha1) %*% cs1 %*% alpha1
+
+## compute p-value
+  
+```
+
+### Problem 2
+
+```{r problem-2}
+
+# import the data
+p2_data <- read.table("data/lab6/Data-06-18.dat", header = FALSE)
+males <- p2_data[p2_data[,4] == "male", 1:3]
+females <- p2_data[p2_data[,4] == "female", 1:3]
+
+# want to compute the test-statistic:
+# T2 = t(Y1_bar - Y2_bar) %*% solve(Sp(1/n1 + 1/n2)) %*% (Y1_bar - Y2_bar)
+
+# setup variables
+## sample sizes
+n_males <- nrow(males)
+n_females <- nrow(females)
+
+## means
+mean_males <- matrix(apply(males, 2, mean), ncol=1)
+mean_females <- matrix(apply(females, 2, mean), ncol=1)
+mean_diff <- mean_males - mean_females
+
+# Sp = pooled sample covariance matrix
+Sp <- ((n_males -1)*cov(males) + (n_females - 1)*cov(females)) / (n_males + n_females - 2)
+
+# compute test statistic using our variable definitions above:
+test_stat <- t(mean_diff) %*% solve(Sp*(1/n_males + 1/n_females)) %*% mean_diff
+
+# compute my p-value
+```
+
+### Problem 3
+
+```{r problem-3}
+
+# import the data
+p3_data <- read.table("data/lab6/T11-05.dat", header = FALSE)
+
+# test statistic: one-way MANOVA
+
+## setup variables
+species <- as.factor(p3_data[,5])
+y <- as.matrix(p3_data[,1:4])
+
+fit <- manova(y ~ species)
+summary(fit, test = "Wilks")
+
+```
+
+### Problem 4
+
+```{r problem-4}
+
+# import the data
+p4_data <- read.table("data/lab6/T06-17.dat", header = FALSE)
+
+# test statistic: two-way MANOVA
+
+## setup variables
+location <- as.factor(p4_data[,1])
+variety <- as.factor(p4_data[,2])
+
+my_mat <- as.matrix(p4_data[,3:5])
+
+fit2 <- manova(my_mat ~ location * variety)
+summary(fit2, test = "Wilks")
+
+```

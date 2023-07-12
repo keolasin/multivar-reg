@@ -1,0 +1,290 @@
+---
+title: "Multivariate Regression Lab 3"
+author: "Matthew Reyes"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Multivariable Regression Lab 3
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Lab 3 Notes
+
+Matrices
+Arrays
+Graphics/plotting
+
+### Matrices and Arrays
+
+**Matrix** is a collection of elements stored in two dimensions. It contains elements of the *same data type*.
+
+```{r matrices}
+
+# `matrix()` constructs a matrix
+# `byrow` indicates whether to fill by row (left to right, default = FALSE), or by column (top to bottom)
+
+# organized by row (left to right)
+my_mat1 <- matrix(1:16, nrow = 4, ncol = 4, byrow = TRUE) 
+
+# organized by column
+my_mat2 <- matrix(1:16, nrow = 4, ncol = 4, byrow = FALSE)
+
+# `diag( c(1,2,3,4) )` would create a diagonal matrix
+my_mat3 <- diag(c(1,2,3,4))
+
+# or, create a 2x2 identity matrix using `diag(2)`
+my_mat4 <- diag(2)
+
+```
+
+- common operators and functions can be applied on every element of a matrix, e.g., matrix addition, elementwise product
+- other important operators and functions for matrices.
+- matrix multiplication `%*%`, inverse of an invertible matrix `solve()`, matrix transposition `t()`
+
+```{r matrix operators}
+
+# contsruct the matrix
+x <- matrix(c(2,1,3,4), nrow = 2, ncol = 2, byrow = TRUE)
+
+# transpose a matrix
+y <- t(x)
+
+# matrix multiplication of x and y
+x %*% y
+
+# inverse of matrix x
+z <- solve(x)
+
+# matrix multiplication of x and inverse x
+x %*% solve(x)
+## if we get a weird rounding number here, use `round()`
+
+```
+
+We can extract elements from the matrix:
+
+```{r extracting-elements}
+# construct the matrix
+new_mat1 <- matrix(1:16, nrow = 4, ncol = 4, byrow = TRUE)
+
+# select the single element living at coordinates (2,3), or row 2, column 3
+new_mat1[2,3]
+
+# select a vector of elements, those living at (2,3), (3,3), and (4,3) or the entire 3rd column
+new_mat1[2:4,3]
+
+# select a submatrix of the original matrix
+new_mat1[2:4, 2:3]
+
+# if we don't supply an index to the second argument, it will return all indices
+new_mat1[2:4,]
+
+```
+
+### Arrays
+
+An array is a collection of elements stored in multiple dimensions. It contains elements with the same data type.
+
+```{r array}
+# construct an array with dimension 2x4x2, each element filled with 1
+my_array <- array(1, dim=c(2,4,2))
+my_array
+
+# extract the (1,2,2)th element of the array, which is 1.
+my_array[1,2,2]
+
+```
+
+### Data Frames
+
+Most commonly used data structure to store data in R.
+
+- similar to a matrix, but only requires each column to be elements of the same data type (each column is a valid vector).
+- typically, each row of a df is an observation, and each column is a variable
+
+```{r data-frames}
+
+# constructing a data frame using `data.frame()`
+## create the variable vectors with associated observations
+p.height <- c(180, 155, 160, 167, 181)
+p.weight <- c(65, 50, 52, 58, 70)
+p.names <- c("Joanna", "Charlotte", "Helen", "Karen", "Amy")
+
+## using the `data.frame()`, we're passing the name of the variable to the data frame
+dataf <- data.frame(height = p.height, weight = p.weight, names = p.names)
+
+# `colnames()` will tell us the variables (names) of the columns
+colnames(dataf)
+# `rownames()` will tell us the number of observations/records in the dataframe
+rownames(dataf)
+
+# we can change the names of the columns/rows
+rownames(dataf) <- p.names
+
+```
+
+#### Extracting from dataframes
+
+We can extract elements from a data frame similar to matrices, we use the syntax:
+
+`[dataName]$[columnName]` to extract a column vector of a data frame, where `$` indicates accessing a property of a data frame object
+
+We can also order a data frame similar to matrices
+
+We can also add columns or rows using `rbind()` and `cbind()`
+
+```{r extraction-df}
+# create dataframes 1 and 2
+df1 <- data.frame(id = 1:4, height = c(120, 150, 132, 122), weight =
+c(44, 56, 49, 45))
+df2 <- data.frame(id = 5:6, height = c(119, 110), weight = c(39, 35))
+
+# append additional rows to a new dataframe
+df_rcomb <- rbind(df1, df2)
+
+# append additional columns to a new dataframe
+df3 <- data.frame(id = 1:4, height = c(120, 150, 132, 122), weight =
+c(44, 56, 49, 45))
+df4 <- data.frame(location = c("UK", "CZ", "CZ", "UK"))
+df_ccomb <- cbind(df3, df4)
+
+# starting from an empty dataframe
+df_example <- data.frame()
+df_example <- rbind(df_example, df1)
+
+```
+
+### Factors
+
+Factors are a special data type in R, like numeric, char, logical
+
+- very useful to encode the group levels of observations. The most common way to construct a factor vector is not by concatenating factor data points, but by:
+
+1. converting a char (or numeric) vector as a factor vector using the `as.factor()` function,
+2. constructing a factor vector directly from a char (or numeric) vector using the `factor()` function
+
+```{r factors}
+# convert a numeric vector (below) as a factor vector with the levels vector `c("1","2","3")`, using `as.factor()`
+# the levels vector is the character version of the unique set of values of the original vector, sorted into increasing order of it.
+as.factor(c(3,1,2,1,2,3,2,1))
+
+# using `factor()`
+factor(c(3,1,2,1,2,3,2,1))
+
+# or, we can use the `as.factor()` function with character values
+as.factor(c("small", "medium", "large"))
+
+# we can sort by the factor using `sort()` function
+fact_x <- as.factor(c(3,1,2,1,2,3,2,1))
+sort(fact_x)
+
+# `order()` function will tell you the index, or location, of the elements, based on their factor, in the vector
+order(fact_x)
+```
+
+If you want to change the order of levels of a factor, just use the `factor()` function and specify the `levels` argument
+
+```{r factor-levels}
+
+# construct a new factor vector from a numeric vector, and manually specify the levels of the factor as "2", "1", "3"
+factor(c(1,1,1,2,2,3,3,3), levels = c(2,1,3))
+
+# if we have too many levels than there are matching observations, it won't do anything
+factor(c(1,1,1,2,2,3,3,3), levels = c(2,1,3,4))
+
+# if we don't specify enough levels for the number of observations, it will provide NAs for the observations not specified
+factor(c(1,1,1,2,2,3,3,3), levels = c(2,1))
+
+```
+
+### Graphics and plotting in R
+
+#### Scatterplots
+
+- plot the values of a numeric vector y against the index using `plot(y)`
+- plot the values of a numeric vector y against another numeric vector x: `plot(x=x, y=y)`
+
+Useful arguments:
+
+- `xlab` = a title for the x-axis
+- `ylab` = a title for the y-axis
+- `main` = an overall title for the plot
+- `type` options:
+    - "p" for points
+    - "l" for lines
+    - "b" for both
+    - "o" for both 'overplotted'
+- `col` = color of the points and lines
+- `lty` = line type, 1 for solid, 2 for dashed, 3 for dotted
+- `xlim` = manually set the limits of the x-axis
+- `ylim` = manually set the limits of the x-axis
+
+```{r plotting-example}
+# Import the base dataset “speed and stopping distances of cars”. Run ?cars for the description.
+(data(cars))
+
+# Scatterplot of the speed vector.
+plot(cars$speed, ylab = "speed (mph)")
+
+# Scatterplot of the distance vector against the speed vector.
+plot(x=cars$speed, y=cars$dist, xlab="speed (mph)", ylab="stopping distance (ft)", main="cars data")
+
+# Scatterplot of the distance vector against the speed vector, with lines connecting the data points.
+plot(x=cars$speed, y=cars$dist, type="o", xlab="speed (mph)", ylab="stopping distance (ft)", main="cars data")
+
+# If we fit a linear model, the fitted line is y = −17.579 + 3.932x. Add the straight lines `y = −17.579 + 3.932x` to the plot.
+lm(cars$dist~speed$dist)
+abline(a=-17.579, b=3.932, col = "red", lty = 2)
+
+```
+
+#### Histograms
+
+- Plot the frequency histogram of a numeric vector x: `hist(x)`
+    - we can manually specify the breakpoints in the histogram using the `breaks` argument
+- plot the probability density histogram of a numeric vector x: `hist(x, freq=FALSE)`
+
+```{r histograms}
+
+# frequency histogram of the distance vector
+hist(cars$dist)
+
+# frequency histogram of the distance vector, with breakpoints manually specified as 0,10...120
+hist(cars$dist, breaks = seq(from = 0, to = 120, by = 10))
+
+# probability density histogram of the distance vector
+hist(cars$dist, freq=FALSE)
+
+# add a kernal density curve on the probability density histogram.
+# we can also use the `lines()` function to add various kinds of lines to a plot
+
+```
+
+#### Boxplots
+
+We can use the boxplot function create boxplots. From boxplots, we can:
+
+1. graphically summarise the distribution of a variable
+2. Identify potential unusual values,
+3. Compare distributions between different groups
+
+```{r boxplots}
+
+# create a boxplot of the distance vector
+boxplot(cars$dist)
+
+# first, determine the mean speed `mean(cars$speed)`, determine where cars$speed is greater than the mean speed `cars$speed > mean(cars$speed)`, convert that result from a logical TRUE/FALSE to a numeric vector `as.numeric(cars$speed > mean(cars$speed))`, then group based on that and append it to the cars2 df:
+cars2 <- cbind(cars, groups = as.numeric(cars$speed > mean(cars$speed)))
+
+# create a boxplot of the new cars2 df, distance grouped by new group vector (speeding greater than average or not)
+
+```
+
+#### Pairs Plots
+
+- we can use the `pairs()` function to create a multi-panel scatterplot (sometimes called a scatterplot matrix) which plots all combinations of variables
+
+

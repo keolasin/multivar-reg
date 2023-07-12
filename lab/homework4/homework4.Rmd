@@ -1,0 +1,223 @@
+---
+title: 'Homework 3: Principal Components Analysis'
+author: "Matthew Reyes"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Homework 4 Assignment
+
+```{r setup, include = FALSE}
+
+# install necessary packages
+
+ 
+# include libraries/packages for analysis
+libraries <- c(
+  "tidyr",
+  "readr",
+  "dplyr",
+  "knitr",
+  "ggplot2",
+  "glmnet",
+  "readxl",
+  "MASS",
+  "fastDummies",
+  "elasticnet"
+)
+
+lapply(libraries, require, character.only = TRUE)
+
+```
+
+## Problem 1
+
+### A) Obtain the sample correlation matrix for the women track records data, and determine its eigenvalues and eigenvectors.
+
+```{r 1-a, tidy= TRUE}
+
+# data cleaning
+track_data <- read.table(file="../data/Data-HW4-track-women.dat", header = FALSE, quote = "", sep="\t")
+colnames(track_data) <- c("country", "100m", "200m", "400m", "800m", "1500m", "3000m", "marathon")
+track_matrix <- as.matrix(track_data[,2:8])
+
+# center data
+center <- function(v) v-mean(v) # centering function, subtract the mean of the input vector from the original vector
+track_centered <- apply(track_matrix, 2, center)
+
+# standardize the data (to get the correlation matrix)
+stand <- function(v) (v-mean(v)) / sd(v) # standardizing function
+track_standardized <- apply(track_centered, 2, stand)
+
+# covariance & correlation matrices
+cov_matrix <- cov(track_centered) # covariance matrix from centered data
+correlation_matrix <- cov(track_standardized) # correlation matrix from centered & standardized data
+
+fit.pca <- eigen(cov(track_standardized))
+
+# correlation_matrix
+correlation_matrix
+
+# eigenvectors (loading values)
+fit.pca$vectors
+
+# eigenvalues
+fit.pca$values
+```
+
+### B)
+
+```{r 1-b}
+# PCA
+pc_direction <- fit.pca$vectors # principal component direction (eigen vectors)
+pc_values <- fit.pca$values # principal component values
+rownames(pc_direction) <- colnames(track_data[,2:8])
+principal_components <- track_standardized %*% pc_direction #principal components
+
+# variation captured by each principal component
+variation_by_PC <- round(fit.pca$values / sum(fit.pca$values), 3)
+# cumulative variation captured by each principal component
+round(cumsum(fit.pca$values)/sum(fit.pca$values), 3)
+# cumulative variation for first two principal components = 0.919
+round(pc_direction[,1:2],3) # the loading values for the first 2 principal components
+
+# scree plot
+amt.var <- fit.pca$values
+plot(amt.var, xlab = "Number of components", ylab = "Amount of variation", type = "b")
+
+
+# using libraries
+pc_lib <- princomp(track_standardized)
+pc_lib$loadings
+# spca(track_standardized, K=2, para=c(4,4), sparse="varnum")
+
+```
+### C)
+
+Interpretation of the first two principal components:
+
+For the first principal component, their values are close to ~0.37 with similar direction, indicating that the principal component is an average of the performance across all events. The second principal component has the first 3 events (100m, 220m, 400m) with similar loading values & direction, while the last 4 events (800m, 1500m, 3000m, and marathon) have loading values of significantly different magnitude and direction, so the second principal component is a contrast of the average performance betweeen those two event groupings (short & long distance).
+
+### D)
+
+```{r ranking}
+
+ranking <- cbind(track_data[,1], principal_components[,1])
+colnames(ranking) <- c("Country", "PC1")
+ranking[,2]<- as.numeric(ranking[,2])
+ranking[order(ranking[,2], decreasing = TRUE),]
+```
+Based on the ranking of the principal component values, it would appear that the larger, richer, dominant nations in recent years have greater principal component values, indicating better performance in these running events. This would match my expectation, that countries with greater access to resources and focus on athletics such as USA, Germany, Russia, China, etc. would be performing better in superfluous athletic events. Especially when compared to the countries that do not have high principal component values, such as Samoa (the lowest value) or Cook Islands, that might be smaller and have less access to athletic resources at the elite level.
+
+### E)
+
+```{r 1-conversion}
+
+track_converted <- track_data[,5:8]*60
+track2 <- cbind(track_data[,1:4], track_converted)
+track2 <- as.matrix(track2[,2:8])
+track2_center <- apply(track2, 2, center)
+pca2 <- princomp(track2_center)
+pca2$loadings
+
+
+
+# covariance & correlation matrices
+cov_matrix2 <- cov(track2_center) # covariance matrix from centered data of altered units
+pca2 <- eigen(cov_matrix2)
+pca2$vectors
+pc2 <- track2_center %*% pca2$vectors
+
+ranking2 <- cbind(track_data[,1], pc2[,1])
+colnames(ranking2) <- c("Country", "PC1")
+ranking2[,2] <- as.numeric(ranking2[,2])
+ranking2[order(ranking2[,2], decreasing = TRUE),]
+
+# Loading values for first 2 principal components of covariance matrix data;
+pca2$vectors[,1:2]
+```
+
+Since we use the covariance matrix for this step, instead of the correlation matrix (which involves standardizing after centering data), the units involved end up skewing the loading values and subsequent principal component analysis based on just a centered (covariance matrix) analysis. Likely, the marathon event has a much larger marginal variance compared to the other x variables, and so it has greater weight (loading value) in the un-standardized principal component analysis. As a result, the ranking data will be skewed towards countries that do exceptionally well in the marathon event, rather than an average performance across all events for the first principal component. For this analysis, I would prefer to use the correlation (standardized) method as used in 1B.
+
+## Problem 2
+
+### A)
+
+```{r training}
+load(file="../data/Data-HW4-Digit-testing.Rdata")
+load(file="../data/Data-HW4-Digit-training.Rdata")
+zip.train <- zip.train
+zip.test <- zip.test
+# PCA on 3,5,8 from training
+training <- cbind(zip.train[,3], zip.train[,5], zip.train[,8])
+pca_train <- princomp(training)
+pca_train$loadings
+head(pca_train$score)
+plot(pca_train$score[,1], pca_train$score[,2], xlab = "PC1", ylab="PC2")
+```
+
+```{r testing}
+# testing data
+testing <- cbind(zip.test[,3], zip.test[,5], zip.test[,8])
+testing_centered <- apply(testing, 2, center)
+pc_applied <- testing_centered %*% pca_train$loadings
+plot(pc_applied[,1], pc_applied[,2], xlab = "PC1", ylab="PC2")
+```
+
+## Problem 3
+
+### A)
+
+```{r pollution}
+
+pollution <- read.table(file="../data/Data-HW4-pollution.dat", header = FALSE, quote = "", sep="")
+pol_matrix <- as.matrix(pollution[,1:7])
+
+# centered, covariance matrix of pollution data
+
+pol_centered <- apply(pol_matrix, 2, center)
+pol_cov <- cov(pol_centered)
+pol_cov
+```
+
+### B)
+```{r commonalities}
+
+fit_pol <- eigen(pol_cov)
+
+fit_pol$vectors
+Loading1 <- fit_pol$vectors[,1] * sqrt(fit_pol$values[1])
+Loading2 <- fit_pol$vectors[,2] * sqrt(fit_pol$values[2])
+
+# communality
+communalities <- round(Loading1^2 + Loading2^2, 3)
+communalities
+
+# factor analysis, no rotation
+factanal(pol_matrix, 1, scores="regression", rotation = "none")
+factanal(pol_matrix, 2, scores="regression", rotation = "none")
+```
+
+### C)
+
+The proportion of variation for the first factor in the m=1 model is `0.261`.
+The proportion of variation for the first factor is `0.221`, and `0.201` for the second factor in the m=2 model.
+
+```{r var-prop}
+# specific var
+specific_variances <- round(diag(cov(pol_centered))-Loading1^2-Loading2^2, 3)
+
+# rotation
+varimax(cbind(Loading1, Loading2), normalize = FALSE)$loadings
+```
+
+### D)
+
+```{r rotation}
+# factor analysis, rotation
+factanal(pol_matrix, 2, scores="regression", rotation = "varimax")
+```
+After rotation, the interpretation for the first factor might be the comparison between the average performance of the first variable (V1) against the other variables (V2-7), and the second factor is the comparison of the average performance between variables V1 & V4 against the remaining variables. After rotation, the proportion of variation for the first factor in this model is now `0.225`, and `0.197` for the second factor, resulting in a cumulative variation attributable to these factors of `0.422`.
+

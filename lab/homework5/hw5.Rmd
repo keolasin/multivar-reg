@@ -1,0 +1,231 @@
+---
+title: 'Homework 5: Discriminant Analysis and Clustering'
+author: "Matthew Reyes"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Homework 5 Assignment
+
+```{r setup, include = FALSE}
+
+# install necessary packages
+ 
+# include libraries/packages for analysis
+libraries <- c(
+  "tidyr",
+  "readr",
+  "dplyr",
+  "knitr",
+  "ggplot2",
+  "glmnet",
+  "readxl",
+  "MASS",
+  "mda",
+  "class",
+  "tree",
+  "fastDummies",
+  "elasticnet",
+  "mclust"
+)
+
+lapply(libraries, require, character.only = TRUE)
+
+```
+
+## Problem 1
+
+### A) Partition the full data set into a training set of 400 patients, and a testing set of 169 patients. Please use the following command set.seed(1000) to set the random seed of your partition, so that you can reproduce all your analysis results.
+
+```{r 1-a, tidy= TRUE}
+
+# random seed
+set.seed(1000)
+
+# data import and cleaning
+bcancer <- read.table(file="../Data/Data-HW5-breastcancer.dat", header = TRUE, quote = "")
+id.test <- sort(sample(seq(1, nrow(bcancer)), size = 169))
+
+bcancer.train.x <- bcancer[-id.test, -1]
+bcancer.train.x <- as.matrix(bcancer.train.x)
+bcancer.test.x <- bcancer[id.test, -1]
+bcancer.test.x <- as.matrix(bcancer.test.x)
+
+bcancer.train.y <- bcancer[-id.test, 1]
+bcancer.test.y <- bcancer[id.test, 1]
+```
+
+### B) Fit LDA, QDA, MDA (with number of subclasses equal to (5, 5)), Nearest Neighbor (with k = 5), and CART. Report the misclassification error rate on the testing data set.
+
+```{r 1-b}
+
+# LDA
+trained.lda <- lda(bcancer.train.x, bcancer.train.y)
+response.trained.lda <- predict(trained.lda, as.data.frame(bcancer.train.x))$class 
+response.tested.lda <- predict(trained.lda, as.data.frame(bcancer.test.x))$class
+## LDA testing misclassification: 0.035
+misclass.lda.training <- sum(response.trained.lda != bcancer.train.y) / length(bcancer.train.y)
+misclass.lda.testing <- sum(response.tested.lda != bcancer.test.y) / length(bcancer.test.y)
+
+# QDA
+trained.qda <- qda(bcancer.train.x, bcancer.train.y)
+response.trained.qda <- predict(trained.qda, as.data.frame(bcancer.train.x))$class
+response.tested.qda <- predict(trained.qda, as.data.frame(bcancer.test.x))$class
+## QDA testing misclassification: 0.035
+misclass.qda.training <- sum(response.trained.qda != bcancer.train.y) / length(bcancer.train.y)
+misclass.qda.testing <- sum(response.tested.qda != bcancer.test.y) / length(bcancer.test.y)
+
+# MDA
+trained.mda <- mda(bcancer.train.y~bcancer.train.x, subclasses=c(5,5))
+response.training.mda <- predict(trained.mda, bcancer.train.x, type="class")
+response.testing.mda <- predict(trained.mda, bcancer.test.x, type="class")
+## MDA testing misclassification: 0.041
+misclass.mda.training <- sum(response.training.mda != bcancer.train.y) / length(bcancer.train.y)
+misclass.mda.testing <- sum(response.testing.mda != bcancer.test.y) / length(bcancer.test.y)
+
+# Nearest Neighbor
+k <- 5 # k = 5
+trained.neighbor <- knn(bcancer.train.x, bcancer.train.x, bcancer.train.y, k=k)
+tested.neighbor <- knn(bcancer.train.x, bcancer.test.x, bcancer.train.y, k=k)
+## KNN testing misclassification: 0.059
+misclass.knn.training <- sum(trained.neighbor != bcancer.train.y) / length(bcancer.train.y)
+misclass.knn.testing <- sum(tested.neighbor != bcancer.test.y) / length(bcancer.test.y)
+
+# CART
+
+id.training <- c(1:length(bcancer[,1]))[-id.test]
+
+output.tree <- tree(as.factor(bcancer[,1])~as.matrix(bcancer[,-1]), data.frame(bcancer), subset = id.training)
+response.training.tree <- predict(output.tree, data.frame(bcancer[id.training, -1]), type="class")
+response.testing.tree <- predict(output.tree, data.frame(bcancer[-id.training, -1]), type="class")
+## CART testing misclassification: 1.49, this is incorrect, troubleshoot what's wrong in the tree() function above
+misclass.cart.training <- sum(response.training.tree != bcancer.train.y) / length(bcancer.train.y)
+misclass.cart.testing <- sum(response.testing.tree != bcancer.test.y) / length(bcancer.test.y)
+## CART plot
+plot(output.tree) 
+#text(output.tree)
+```
+
+### C)
+
+```{r 1-c}
+
+# MDA subclasses = (1,1)
+trained.mda1 <- mda(bcancer.train.y~bcancer.train.x, subclasses=c(1,1))
+response.training.mda1 <- predict(trained.mda1, bcancer.train.x, type="class")
+response.testing.mda1 <- predict(trained.mda1, bcancer.test.x, type="class")
+## MDA(1,1) misclass: 0.0375 & 0.041 (training, testing)
+misclass.mda1.training <- sum(response.training.mda1 != bcancer.train.y) / length(bcancer.train.y)
+misclass.mda1.testing <- sum(response.testing.mda1 != bcancer.test.y) / length(bcancer.test.y)
+
+# MDA subclasses = (5,5)
+trained.mda5 <- mda(bcancer.train.y~bcancer.train.x, subclasses=c(5,5))
+response.training.mda5 <- predict(trained.mda5, bcancer.train.x, type="class")
+response.testing.mda5 <- predict(trained.mda5, bcancer.test.x, type="class")
+## MDA(5,5) misclass: 0.0275 & 0.0295
+misclass.mda5.training <- sum(response.training.mda5 != bcancer.train.y) / length(bcancer.train.y)
+misclass.mda5.testing <- sum(response.testing.mda5 != bcancer.test.y) / length(bcancer.test.y)
+
+# MDA subclasses = (10,10)
+trained.mda10 <- mda(bcancer.train.y~bcancer.train.x, subclasses=c(10,10))
+response.training.mda10 <- predict(trained.mda10, bcancer.train.x, type="class")
+response.testing.mda10 <- predict(trained.mda10, bcancer.test.x, type="class")
+## MDA(10,10) misclass: 0.0225 & 0.0236
+misclass.mda10.training <- sum(response.training.mda10 != bcancer.train.y) / length(bcancer.train.y)
+misclass.mda10.testing <- sum(response.testing.mda10 != bcancer.test.y) / length(bcancer.test.y)
+
+```
+
+From the above misclassification rates, we can tell that as the model gets more complex (by increasing the number of mixture of components used from 1, to 5, to 10 for P(X|Y=0) and P(X|Y=1) each respectively), while we expect the training misclassification rate to always perform better than when the model is applied to the testing data, the testing misclassification rate will get closer to the training misclassification rate. This is because we're taking the sum of a mixture of normal distributions, assuming the variances are the same and the means are different in the samples, so with a greater number of normal distributions used for both X|Y=0 and X|Y=1, the MDA decision boundaries that are generated can get closer and closer to the true decision boundary, especially when that true decision boundary is non-linear.
+
+### D)
+
+```{r 1-d}
+# Nearest Neighbor, k = 1
+k <- 1
+trained.neighbor <- knn(bcancer.train.x, bcancer.train.x, bcancer.train.y, k=k)
+tested.neighbor <- knn(bcancer.train.x, bcancer.test.x, bcancer.train.y, k=k)
+## KNN misclass: 0.0 & 0.065 (training, testing)
+misclass.knn.training <- sum(trained.neighbor != bcancer.train.y) / length(bcancer.train.y)
+misclass.knn.testing <- sum(tested.neighbor != bcancer.test.y) / length(bcancer.test.y)
+
+# Nearest Neighbor, k = 5
+k <- 5
+trained.neighbor <- knn(bcancer.train.x, bcancer.train.x, bcancer.train.y, k=k)
+tested.neighbor <- knn(bcancer.train.x, bcancer.test.x, bcancer.train.y, k=k)
+## KNN misclass: 0.0625 & 0.05917
+misclass.knn.training <- sum(trained.neighbor != bcancer.train.y) / length(bcancer.train.y)
+misclass.knn.testing <- sum(tested.neighbor != bcancer.test.y) / length(bcancer.test.y)
+
+# Nearest Neighbor, k = 10
+k <- 10
+trained.neighbor <- knn(bcancer.train.x, bcancer.train.x, bcancer.train.y, k=k)
+tested.neighbor <- knn(bcancer.train.x, bcancer.test.x, bcancer.train.y, k=k)
+## KNN misclass: 0.065 & 0.05917
+misclass.knn.training <- sum(trained.neighbor != bcancer.train.y) / length(bcancer.train.y)
+misclass.knn.testing <- sum(tested.neighbor != bcancer.test.y) / length(bcancer.test.y)
+
+```
+
+Past a certain nearest-neighbor threshold, the k-nearest-neighbor misclassification for the model on both the training and testing sets will get closer to one another. Increaisng model complexity (by increasing the tuning parameter, k), will improve the training misclassification to a point, however, it will not improve much beyond a certain level of model complexity (hence why the misclassification rate for the testing data is similar for the models using k=5 and k=10). With a k=1, the model almost perfectly predicts the training data it was trained on, however, it has a higher misclassification rate when applied to the testing data than when the tuning parameter is increased to increase model complexity.
+
+
+## Problem 2
+
+### A)
+
+```{r 2-a}
+
+# data import and cleaning
+uni <- read.table(file="../Data/Data-HW5-university.dat", header = FALSE, quote = "")
+colnames(uni) <- c("school","Average_SAT","freshman_top_10%","percent_accepted","student_faculty_ratio","expenses","grad_rate")
+rownames(uni) <- uni[,1]
+
+uni.clustered <- Mclust(uni[,-1])
+uni.clustered$modelName # EEE
+uni.clustered$G # 8
+uni.clustered$BIC
+
+```
+
+Using the BIC (Bayesian information criterion), the best model would be EEE, meaning the clusters in the model have the same shape, orientation, and volume.
+
+### B)
+
+```{r 2-b}
+i <- 3
+j <- 6
+plot(uni[,i], uni[,6], xlab=colnames(uni)[i], ylab=colnames(uni)[j], type="n") +
+for(s in 1:nrow(uni)) {
+  text(uni[s,i], uni[s,j], rownames(uni)[s], col=uni.clustered$classification[s])
+}
+
+```
+
+### C)
+
+```{r 2-c}
+
+# k-means
+# best number of clusters = 8
+set.seed(1000)
+km <- kmeans(as.matrix(uni[,-1]), centers = 8)
+```
+
+### D)
+
+```{r 2-d}
+plot(uni[,i], uni[,6], xlab=colnames(uni)[i], ylab=colnames(uni)[j], type="n") +
+for(s in 1:nrow(uni)) {
+  text(uni[s,i], uni[s,j], rownames(uni)[s], col=km$cluster[s])
+}
+```
+
+### E)
+```{r 2-e}
+
+hc <- hclust(dist(uni[,-1]), "average")
+plot(hc, hang=-1, main="Top Schools", ylab=NULL)
+```
